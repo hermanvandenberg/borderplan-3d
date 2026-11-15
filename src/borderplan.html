@@ -1,0 +1,1007 @@
+<title>Borderplan 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Kalam:wght@400;700&display=swap">
+<style>
+/* Layout: werkblad-app. Links het 3D-tafereel met maandschuif, rechts een paneel met tabbladen (Planten, Plan, Inlezen). Op telefoon onder elkaar. */
+:root{
+  --paper:#f3f5ef; --sheet:#ffffff; --ink:#1f2a22; --muted:#5d6b60; --line:#d6ddd3; --grid:#e6ebe3;
+  --moss:#3f6b3a; --moss-ink:#ffffff; --pencil:#3a3f45; --warn:#b4541c; --ok:#2f7a45; --chip:#eef2ea;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --f-hand:"Kalam", "Comic Sans MS", cursive;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#141a16; --sheet:#1b231e; --ink:#e6ece5; --muted:#9aa89c; --line:#2f3a33; --grid:#222b25;
+  --moss:#8cc47f; --moss-ink:#10180f; --pencil:#cfd6d0; --warn:#f09a5f; --ok:#7fd196; --chip:#243029; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#141a16; --sheet:#1b231e; --ink:#e6ece5; --muted:#9aa89c; --line:#2f3a33; --grid:#222b25;
+  --moss:#8cc47f; --moss-ink:#10180f; --pencil:#cfd6d0; --warn:#f09a5f; --ok:#7fd196; --chip:#243029; color-scheme:dark}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+*{box-sizing:border-box}
+.app{display:flex;flex-direction:column;height:100%;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px;gap:12px}
+header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+header h1{font-family:var(--f-display);font-weight:700;font-size:22px;margin:0;letter-spacing:-.01em}
+header .sub{color:var(--muted);font-size:13px}
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:12px}
+.stage{position:relative;min-height:0;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#cfe3f0}
+#three{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.hud{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  background:color-mix(in srgb,var(--sheet) 88%,transparent);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.hud .month{font-family:var(--f-display);font-weight:700;font-size:18px;min-width:96px}
+.hud input[type=range]{flex:1;min-width:140px;accent-color:var(--moss)}
+.hud .season{color:var(--muted);font-size:12px;width:100%}
+.toggles{position:absolute;top:10px;left:10px;display:flex;gap:6px;flex-wrap:wrap}
+.pill{font:500 12px var(--f-body);border:1px solid var(--line);background:color-mix(in srgb,var(--sheet) 90%,transparent);color:var(--ink);
+  border-radius:999px;padding:5px 10px;cursor:pointer}
+.pill[aria-pressed="true"]{background:var(--moss);color:var(--moss-ink);border-color:var(--moss)}
+.pill:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--moss);outline-offset:2px}
+.panel{min-height:0;display:flex;flex-direction:column;background:var(--sheet);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;font:600 13px var(--f-body);padding:10px 6px;border:0;background:none;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--moss)}
+.tabbody{flex:1;min-height:0;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px}
+h2{font-family:var(--f-display);font-weight:700;font-size:16px;margin:0}
+h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0;font-weight:600}
+.plist{display:flex;flex-direction:column}
+.prow{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--grid);cursor:pointer;background:none;border-left:0;border-right:0;border-top:0;text-align:left;color:inherit;font:inherit;width:100%}
+.prow:hover{background:var(--chip)}
+.prow.sel{background:var(--chip)}
+.nr{font-family:var(--f-hand);font-weight:700;font-size:17px;width:28px;height:28px;border:1.5px solid var(--pencil);border-radius:50%;display:grid;place-items:center;line-height:1}
+.pname{min-width:0}
+.pname b{font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pname span{color:var(--muted);font-size:12px}
+.sw{display:flex;gap:3px}
+.sw i{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.15);display:block}
+.state{font-size:11px;padding:2px 7px;border-radius:999px;background:var(--chip);color:var(--muted);white-space:nowrap}
+.state.bloom{background:color-mix(in srgb,var(--moss) 18%,transparent);color:var(--ink)}
+.card{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.card .top{display:flex;gap:10px;align-items:center}
+.kv{display:grid;grid-template-columns:110px minmax(0,1fr);gap:4px 10px;font-size:13px}
+.kv dt{color:var(--muted)} .kv dd{margin:0}
+.bloombar{display:grid;grid-template-columns:repeat(12,1fr);gap:2px}
+.bloombar span{height:14px;border-radius:2px;background:var(--grid);font-size:9px;text-align:center;color:var(--muted);line-height:14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+label{font-size:13px}
+input[type=number],input[type=text],select,textarea{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+input[type=color]{width:34px;height:28px;border:1px solid var(--line);border-radius:6px;background:none;padding:1px}
+textarea{width:100%;min-height:90px;font-family:ui-monospace,monospace;font-size:12px}
+.btn{font:600 13px var(--f-body);border-radius:8px;padding:8px 12px;border:1px solid var(--line);background:var(--sheet);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--moss);color:var(--moss-ink);border-color:var(--moss)}
+.btn:disabled{opacity:.5;cursor:default}
+.note{font-size:12px;color:var(--muted)}
+.check{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.check .bad{color:var(--warn)} .check .good{color:var(--ok)}
+#plan2d{width:100%;aspect-ratio:3.6/1;border:1px solid var(--line);border-radius:8px;background:var(--sheet);touch-action:none;display:block;max-width:100%}
+.drop{border:1.5px dashed var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap}
+.thumbs img{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+.log{font-size:12px;color:var(--muted);white-space:pre-wrap}
+.legend{font-size:12px;color:var(--muted)}
+a{color:var(--moss)}
+@media (max-width:860px){
+  .app{height:auto;min-height:100%}
+  .main{grid-template-columns:1fr}
+  .stage{height:62vh;min-height:360px}
+  .panel{max-height:none}
+  .tabbody{overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <header>
+    <h1>Borderplan 3D</h1>
+    <span class="sub" id="subtitle">Border van Herman · 26 soorten · 68 vakken</span>
+  </header>
+  <div class="main">
+    <div class="stage" id="stage">
+      <canvas id="three" aria-label="3D-weergave van de border"></canvas>
+      <div class="toggles">
+        <button class="pill" id="tNums" aria-pressed="true">Nummers</button>
+        <button class="pill" id="tZones" aria-pressed="false">Vakken</button>
+        <button class="pill" id="tAge" aria-pressed="false">1e jaar</button>
+        <button class="pill" id="tPlay" aria-pressed="false">▶ Jaar afspelen</button>
+        <button class="pill" id="tTop">Bovenaanzicht</button>
+      </div>
+      <div class="hud">
+        <span class="month" id="monthLbl">Juli</span>
+        <input type="range" id="month" min="1" max="12" step="1" value="7" aria-label="Maand">
+        <span class="month" id="clockLbl" style="min-width:64px">14:00</span>
+        <input type="range" id="clock" min="5" max="22" step="0.5" value="14" aria-label="Tijd van de dag">
+        <div class="season"><span id="seasonLbl"></span> · <span id="sunLbl"></span></div>
+      </div>
+    </div>
+    <aside class="panel">
+      <div class="tabs" role="tablist">
+        <button role="tab" id="tab-planten" aria-selected="true">Planten</button>
+        <button role="tab" id="tab-plan" aria-selected="false">Plan</button>
+        <button role="tab" id="tab-inlezen" aria-selected="false">Inlezen</button>
+      </div>
+      <div class="tabbody" id="pane-planten">
+        <div id="infoCard" class="card" hidden></div>
+        <div class="legend">Tik een plant aan in 3D of in de lijst. Kleurvakjes: blad · bloem.</div>
+        <div class="plist" id="plist"></div>
+      </div>
+      <div class="tabbody" id="pane-plan" hidden>
+        <h2>Plan bewerken</h2>
+        <canvas id="plan2d"></canvas>
+        <div class="note">Sleep een vak om het te verplaatsen. Tik een vak aan om het te wijzigen.</div>
+        <div id="zoneEdit" class="card" hidden></div>
+        <div class="row">
+          <button class="btn" id="addZone">Vak toevoegen</button>
+          <label class="row"><input type="checkbox" id="editOutline"> Omtrek aanpassen</label>
+        </div>
+        <div class="card">
+          <h3>Afmeting</h3>
+          <div class="row"><label for="lenM">Lengte</label><input type="number" id="lenM" min="1" max="200" step="0.1" style="width:80px"> m
+            <label for="depM">Diepte (diepste punt)</label><input type="number" id="depM" min="0.3" max="50" step="0.1" style="width:80px"> m</div>
+          <div class="note">De tekening wordt in de lengte en diepte uitgerekt tot deze maten.</div>
+        </div>
+        <div class="card">
+          <h3>Omgeving</h3>
+          <div class="row"><label for="bdSel">Achtergrond</label><select id="bdSel"></select></div>
+          <div class="row"><label for="northSel">Noorden op de tekening</label><select id="northSel"></select></div>
+          <div class="note" id="facingLbl"></div>
+          <div class="note">Je kunt ook de kompasnaald rechtsboven in de tekening verslepen.</div>
+        </div>
+        <div class="card">
+          <h3>Controle aantallen</h3>
+          <div class="check" id="countCheck"></div>
+        </div>
+        <div class="card">
+          <h3>Opslaan en delen</h3>
+          <div class="row"><button class="btn" id="copyJson">Kopieer plan (JSON)</button><button class="btn" id="resetPlan">Terug naar origineel</button></div>
+          <textarea id="jsonIn" placeholder="Plak hier een eerder gekopieerd plan…" aria-label="Plan als JSON"></textarea>
+          <button class="btn" id="loadJson">Plan laden</button>
+          <div class="note" id="saveNote">Wijzigingen worden in deze browser bewaard.</div>
+        </div>
+      </div>
+      <div class="tabbody" id="pane-inlezen" hidden>
+        <h2>Nieuw plan inlezen</h2>
+        <p class="note" style="margin:0">Maak een foto van de tekening en van de plantenlijst. Claude leest de vakken, nummers en plantnamen uit en zoekt hoogte, vorm, kleur en bloeitijd op. Daarna kun je alles corrigeren onder Plan en Planten.</p>
+        <div class="drop">
+          <label for="fPlan"><b>1. Foto van de tekening</b></label>
+          <input type="file" id="fPlan" accept="image/*">
+          <div class="thumbs" id="thPlan"></div>
+        </div>
+        <div class="drop">
+          <label for="fList"><b>2. Foto's van de plantenlijst</b></label>
+          <input type="file" id="fList" accept="image/*" multiple>
+          <div class="thumbs" id="thList"></div>
+        </div>
+        <div class="row"><label for="impLen">Lengte</label><input type="number" id="impLen" value="15" min="1" max="200" step="0.1" style="width:80px"> m
+          <label for="impDep">Diepte</label><input type="number" id="impDep" min="0.3" max="50" step="0.1" placeholder="auto" style="width:80px"> m</div>
+        <div class="row"><button class="btn primary" id="runImport">Lees in met Claude</button><button class="btn" id="stopImport" hidden>Stop</button></div>
+        <div class="log" id="impLog"></div>
+        <div class="note" id="impUnavail" hidden>Inlezen met Claude werkt in de app (met de Borderplan-server) of als je deze pagina in Claude opent en toestemming geeft. Je kunt een plan ook met de hand intekenen onder Plan.</div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!--@THREE@-->
+<script>
+"use strict";
+if(THREE.ColorManagement) THREE.ColorManagement.legacyMode=false;
+/* ============ Plantenbibliotheek ============
+   Hoogte (h) en breedte (w) in meters, volgroeid incl. bloei. Kleuren als hex.
+   bloom = maanden in bloei. winter: evergreen | semi | stand (blijft staan, in maart knippen) | collapse | deciduous
+   Bronnen: RHS Plant Finder, kwekerij-catalogi (Hessenhof, Hardy's, Claire Austin), Missouri Botanical Garden. */
+const LIB = [
+ {key:/nandina/i, name:"Nandina domestica", nl:"Hemelse bamboe", form:"cane", h:1.2, w:0.8, leaf:"#56702f", winterLeaf:"#9b3a26", young:"#a4532c",
+  flower:"#f3efdf", bloom:[6,7], berry:"#c4161c", berryM:[10,11,12,1,2], winter:"evergreen",
+  desc:"Wintergroene, rechtopstaande struik met bamboe-achtige stengels en gevind blad. Nieuw blad bronsrood, in de winter rood verkleurend. Witte pluimen in de zomer, rode bessen in herfst en winter."},
+ {key:/viburnum/i, name:"Viburnum tinus", nl:"Sneeuwbal (wintergroen)", form:"shrub", h:1.8, w:1.5, leaf:"#2e4a26",
+  flower:"#f6f1ef", bud:"#e3a0b5", bloom:[11,12,1,2,3,4], berry:"#2b3b6e", berryM:[5,6,7], winter:"evergreen",
+  desc:"Compacte, ronde wintergroene struik met donkergroen glanzend blad. Roze knoppen die van november tot april opengaan tot witte schermen. Daarna metaalblauwe bessen."},
+ {key:/veronicastrum/i, name:"Veronicastrum virginicum 'Pink Glow'", nl:"Zwarte ereprijs", form:"spikes", h:1.4, w:0.5, leaf:"#4c6c33",
+  flower:"#f0dbe4", bloom:[7,8,9], seed:"#5a3f2a", winter:"stand", spikeLen:0.22, spikeW:0.035, stems:11, candelabra:true,
+  desc:"Strak rechtopstaand, kransen van smalle bladeren. Slanke aren in heel lichtroze tot bijna wit. Zaadaren blijven mooi donkerbruin in de winter."},
+ {key:/rudbeckia/i, name:"Rudbeckia laciniata 'Herbstsonne'", nl:"Zonnehoed", form:"daisy", h:2.0, w:0.8, leaf:"#4f7232",
+  flower:"#f2c200", center:"#7e9a3c", seedCenter:"#3d2c1c", seed:"#3d2c1c", bloom:[7,8,9], winter:"stand", head:0.11, heads:16, stems:9, droop:true,
+  desc:"Hoge plant met grote goudgele bloemen met afhangende lintbloemen en een groen kegelvormig hart. Bloeit lang, tot in de herfst."},
+ {key:/sanguisorba/i, name:"Sanguisorba officinalis 'Pink Tanna'", nl:"Grote pimpernel", form:"buttons", h:0.9, w:0.5, leaf:"#5b7e6c",
+  flower:"#c4527c", bloom:[7,8,9], seed:"#6b2b3a", winter:"stand",
+  desc:"Blauwgroen geveerd blad laag bij de grond. Daarboven ijle draadstengels met kleine roze knopjes (2–3 cm) die later donkerder roze worden."},
+ {key:/koningin|charlotte/i, name:"Anemone × hybrida 'Königin Charlotte'", nl:"Japanse anemoon", form:"daisy", h:0.9, w:0.6, leaf:"#3d5d2b",
+  flower:"#e9a6c3", center:"#e2c13a", bloom:[8,9,10], winter:"collapse", head:0.065, heads:14, stems:8,
+  desc:"Halfgevulde zachtroze bloemen met goudgeel hart op stevige stelen boven donkergroen gedeeld blad. Late bloeier."},
+ {key:/honorine|jobert/i, name:"Anemone × hybrida 'Honorine Jobert'", nl:"Japanse anemoon (wit)", form:"daisy", h:1.1, w:0.6, leaf:"#3d5d2b",
+  flower:"#fbfbf4", center:"#e5c53a", bloom:[8,9,10], winter:"collapse", head:0.06, heads:14, stems:8,
+  desc:"Klassieke witte, enkelbloemige Japanse anemoon met geel hart. Bloeit van eind augustus tot in oktober."},
+ {key:/persicaria|blackfield/i, name:"Persicaria amplexicaulis 'Blackfield'", nl:"Duizendknoop", form:"spikes", h:0.7, w:0.6, leaf:"#3b5a28",
+  flower:"#7d1530", bloom:[7,8,9,10], seed:"#4a1a22", winter:"collapse", spikeLen:0.16, spikeW:0.04, stems:14,
+  desc:"Compacte duizendknoop met dichte, donker karmijnrode aren boven fris groen blad. Zeer lange bloei."},
+ {key:/sesleria/i, name:"Sesleria autumnalis", nl:"Herfstblauwgras", form:"grass", h:0.45, w:0.4, leaf:"#a7b84a",
+  flower:"#ddddc6", bloom:[8,9,10], winter:"evergreen", leafH:0.6, blades:48, arch:0.7,
+  desc:"Lage pol van limoen- tot geelgroen gras dat de hele winter groen blijft. Zilverwitte aartjes in de nazomer."},
+ {key:/panicum/i, name:"Panicum virgatum 'Northwind'", nl:"Vingergras", form:"grass", h:1.7, w:0.5, leaf:"#6e8b6c", autumn:"#d6b04a",
+  flower:"#c7b88c", bloom:[8,9,10], winter:"stand", winterCol:"#c9ad78", leafH:0.75, blades:60, arch:0.15,
+  desc:"Kaarsrecht opgaand gras met olijf- tot blauwgroen blad. Luchtige beige pluimen vanaf augustus. Kleurt in de herfst goudgeel en blijft in de winter staan."},
+ {key:/molinia/i, name:"Molinia caerulea 'Moorhexe'", nl:"Pijpenstrootje", form:"grass", h:0.8, w:0.4, leaf:"#5e7a3b", autumn:"#d89b2c",
+  flower:"#4a2e47", bloom:[7,8,9], winter:"stand", winterCol:"#c8a46a", leafH:0.5, blades:44, arch:0.3,
+  desc:"Smal, rechtopstaand gras met donkerpaarse aren. Kleurt in de herfst oranjegeel."},
+ {key:/salvia|caradonna/i, name:"Salvia nemorosa 'Caradonna'", nl:"Salie", form:"spikes", h:0.55, w:0.45, leaf:"#4f6b37", stem:"#3a2340",
+  flower:"#4c2f91", bloom:[6,7,9], rebloom:true, seed:"#4a3a44", winter:"stand", spikeLen:0.32, spikeW:0.022, stems:16,
+  desc:"Slanke, diep violetblauwe aren op bijna zwarte stengels. Na de eerste bloei terugknippen geeft een tweede bloei in de nazomer."},
+ {key:/calamintha/i, name:"Calamintha nepeta 'Blue Cloud'", nl:"Bergsteentijm", form:"mound", h:0.35, w:0.45, leaf:"#6a8a4e",
+  flower:"#bab4e2", bloom:[7,8,9,10], winter:"stand", flowers:90, fsize:0.018,
+  desc:"Lage, luchtige bol met een waas van piepkleine lichtlila-blauwe bloempjes. Geurig blad, geliefd bij bijen."},
+ {key:/origanum/i, name:"Origanum vulgare 'Hopley's'", nl:"Marjolein", form:"umbel", h:0.5, w:0.45, leaf:"#5d783d",
+  flower:"#9a4886", bloom:[7,8,9], seed:"#5e3a3e", winter:"stand", umbel:0.04, stems:16,
+  desc:"Kleine trosjes paarsroze bloemen met donkere schutbladen boven aromatisch blad. Vlinders en bijen."},
+ {key:/gillenia/i, name:"Gillenia trifoliata", nl:"Driebladspirea", form:"airy", h:0.9, w:0.6, leaf:"#4e7034", stem:"#8a2a23", autumn:"#b9452c",
+  flower:"#fbfaf3", bloom:[6,7], winter:"collapse",
+  desc:"IJle, struikvormige vaste plant met roodachtige stelen en kleine witte stervormige bloempjes met rode kelk. Rode herfstkleur."},
+ {key:/lupin|governor|gouvener/i, name:"Lupinus 'The Governor'", nl:"Lupine", form:"spikes", h:0.9, w:0.5, leaf:"#5d7f45",
+  flower:"#3c4fae", flower2:"#f6f6f2", bloom:[5,6], seed:"#6b6650", winter:"collapse", spikeLen:0.38, spikeW:0.07, stems:6, florets:true,
+  desc:"Dikke aren met blauwe en witte bloempjes (tweekleurig) boven handvormig blad. Vroege zomer."},
+ {key:/amsonia/i, name:"Amsonia hubrichtii", nl:"Blauwe ster", form:"feather", h:0.85, w:0.8, leaf:"#7d9b46", autumn:"#e2b31f",
+  flower:"#a8c2e4", bloom:[5,6], winter:"stand",
+  desc:"Fijn, naaldvormig blad in een ronde bos. Lichtstaalblauwe stervormige bloempjes in mei–juni. Spectaculaire goudgele herfstkleur."},
+ {key:/aster|harry/i, name:"Aster ageratoides 'Harry Smith'", nl:"Aster", form:"daisy", h:0.7, w:0.5, leaf:"#3e5a2c",
+  flower:"#c79bc8", center:"#e0b437", bloom:[8,9,10], winter:"stand", head:0.028, heads:70, stems:10, seedCenter:"#8a7a5a", seed:"#8a7a5a",
+  desc:"Veel kleine lila-roze stervormige bloemen met goudgeel hart. Bloeit van eind augustus tot in oktober."},
+ {key:/geranium|rozanne/i, name:"Geranium 'Rozanne'", nl:"Ooievaarsbek", form:"mound", h:0.45, w:0.8, leaf:"#557a38",
+  flower:"#6a5fc2", bloom:[6,7,8,9,10], winter:"collapse", flowers:70, fsize:0.04,
+  desc:"Brede, kruipende pollen met violetblauwe bloemen met wit hart. Bloeit onafgebroken van juni tot de vorst."},
+ {key:/geum/i, name:"Geum coccineum 'Borisii'", nl:"Nagelkruid", form:"daisy", h:0.35, w:0.35, leaf:"#4e6e30",
+  flower:"#f2541b", center:"#e8a531", bloom:[5,6], winter:"semi", head:0.035, heads:10, stems:10,
+  desc:"Rozet van behaard blad met oranje-scharlakenrode bloemen op dunne stelen. Bloeit in mei–juni."},
+ {key:/dryopteris/i, name:"Dryopteris erythrosora var. prolifica", nl:"Rode schildvaren", form:"fern", h:0.5, w:0.5, leaf:"#3f6a2e", young:"#b5642f",
+  bloom:[], winter:"semi",
+  desc:"Varen met smalle, glanzende bladen. Jong blad is koperrood en wordt later frisgroen. Halfwintergroen."},
+ {key:/epimedium|orange/i, name:"Epimedium × warleyense 'Orangekönigin'", nl:"Elfenbloem", form:"ground", h:0.3, w:0.4, leaf:"#5c7a34", young:"#8a5a2e",
+  flower:"#e8842a", bloom:[4,5], winter:"semi",
+  desc:"Bodembedekker met hartvormig blad, eerst bronskleurig. Kleine oranje bloempjes in april–mei, nog voor het nieuwe blad."},
+ {key:/phlox|david/i, name:"Phlox paniculata 'David'", nl:"Vlambloem", form:"umbel", h:1.1, w:0.6, leaf:"#3f6a2f",
+  flower:"#fdfdf8", bloom:[7,8,9], seed:"#6b5a40", winter:"stand", umbel:0.11, stems:9,
+  desc:"Grote, gewelfde pluimen zuiver witte, geurende bloemen op stevige stengels. Bloeit de hele zomer."},
+ {key:/amelanchier/i, name:"Amelanchier lamarckii", nl:"Krentenboompje", form:"tree", h:2.8, w:2.0, leaf:"#3f5f2e", young:"#9a5b3a", autumn:"#d6531f",
+  flower:"#fbf8f2", bloom:[4], berry:"#3a1f3d", berryM:[6], winter:"deciduous",
+  desc:"Meerstammige kleine boom. Witte bloesem in april terwijl het jonge blad koperkleurig is. Paarszwarte bessen in juni en een oranjerode herfstkleur."},
+ {key:/erigeron/i, name:"Erigeron karvinskianus", nl:"Muurfijnstraal", form:"daisy", h:0.25, w:0.4, leaf:"#5a7a3e",
+  flower:"#fbf8f4", flower2:"#f0b8cf", center:"#efc23d", bloom:[5,6,7,8,9,10], winter:"semi", head:0.018, heads:80, stems:10,
+  desc:"Lage, kussenvormige plant met ontelbare madeliefjes die wit opengaan en roze verkleuren. Bloeit van mei tot oktober."},
+ {key:/eupatorium|riesenschirm/i, name:"Eupatorium maculatum 'Riesenschirm'", nl:"Leverkruid", form:"umbel", h:2.2, w:0.9, leaf:"#466a30", stem:"#5a1f33",
+  flower:"#8e3c63", bloom:[8,9], seed:"#6a4a3a", winter:"stand", umbel:0.2, stems:7,
+  desc:"Zeer hoge, stevige plant met donker paarsrode stengels en grote platte schermen in wijnroze. Bijen- en vlindermagneet."},
+];
+
+/* Plantenlijst van Herman (nummer → aantal per vak, totaal, snoei) */
+const LIST = [
+ [1,"Nandina domestica",2,6,"Niet snoeien",0,0],[2,"Viburnum tinus",1,3,"Na de bloei snoeien (alleen de bloemen eraf)",0,0],
+ [3,"Veronicastrum 'Pink Glow'",5,10,"",1,0],[4,"Rudbeckia 'Herbstsonne'",5,10,"",1,0],[5,"Sanguisorba off. Pink Tanna",5,10,"",1,0],
+ [6,"Anemone Koningin Charlotte",5,10,"",1,0],[7,"Anemone Honorine Jobert",5,15,"",1,0],[8,"Persicaria am. Blackfield",5,10,"",1,0],
+ [9,"Sesleria autumnalis",3,6,"Blijft de hele winter groen, in maart alleen de pluimen eruit knippen.",1,0],[10,"Panicum Nordwind",1,2,"",1,0],
+ [11,"Molinia Moorhexe",3,6,"",1,0],[12,"Salvia nem. Caradonna",5,25,"",1,1],[14,"Calamintha nep Blue Cloud",5,20,"",1,1],
+ [15,"Origanum vulg. Hopelys",5,10,"",1,1],[16,"Gillenia trifoliata",3,9,"",1,0],[17,"Lupine The Gouvener",1,3,"",1,0],
+ [18,"Amsonia hubrechtii",5,15,"",1,0],[19,"Aster Harry Smith",5,15,"",1,0],[20,"Geranium Rozanne",3,6,"",1,0],
+ [22,"Geum borisii",5,10,"",0,0],[23,"Dryopteris Profilica",5,10,"",0,0],
+ [24,"Epimedium Oranjekoningin",5,15,"Eind februari knippen, voorzichtig voor de eventuele bloemen, hij geeft eerst bloemen en dan verschijnt het blad.",0,0],
+ [25,"Phlox pan. David",5,10,"",1,0],[26,"Amelanchier lamarkii",1,2,"Niet snoeien",1,0],[27,"Erigeron karvinskiana",5,15,"",1,0],[28,"Eupatorium 'Riesenschirm'",3,6,"",1,0]
+];
+
+/* Plan zoals afgelezen van de foto. Eenheid: 1 = afstand tussen twee streepjeslijnen op de tekening. */
+const ORIG_PLAN = {"outline":[[0.0,0.0],[6.775,0.078],[13.446,0.0],[13.607,1.917],[12.763,1.735],[12.358,1.338],[11.969,1.261],[11.527,1.412],[11.348,1.678],[11.166,1.879],[11.049,2.11],[10.807,2.411],[10.551,2.424],[10.154,2.187],[9.882,1.879],[9.68,1.697],[9.155,1.467],[8.592,1.752],[8.157,2.03],[7.316,1.912],[6.863,1.838],[6.281,1.739],[5.565,1.55],[4.599,1.47],[3.701,1.483],[2.419,1.515],[1.649,1.522],[0.759,1.695],[-0.099,1.866]],"zones":[{"p":[8],"x":0.36,"y":0.399,"rx":0.321,"ry":0.321,"c":true},{"p":[18],"x":0.893,"y":0.533,"rx":0.256,"ry":0.449,"c":false},{"p":[1,2],"x":1.473,"y":0.311,"rx":0.365,"ry":0.365,"c":true},{"p":[3],"x":2.322,"y":0.237,"rx":0.372,"ry":0.372,"c":true},{"p":[10],"x":3.049,"y":0.264,"rx":0.288,"ry":0.288,"c":true},{"p":[28],"x":3.712,"y":0.424,"rx":0.372,"ry":0.372,"c":true},{"p":[7],"x":4.48,"y":0.385,"rx":0.353,"ry":0.353,"c":true},{"p":[4],"x":5.235,"y":0.347,"rx":0.353,"ry":0.353,"c":true},{"p":[6],"x":5.989,"y":0.406,"rx":0.353,"ry":0.353,"c":true},{"p":[12],"x":0.338,"y":0.978,"rx":0.385,"ry":0.288,"c":false},{"p":[9],"x":0.331,"y":1.472,"rx":0.449,"ry":0.353,"c":false},{"p":[17],"x":1.916,"y":0.706,"rx":0.224,"ry":0.224,"c":true},{"p":[14],"x":1.593,"y":1.043,"rx":0.417,"ry":0.288,"c":false},{"p":[16],"x":2.42,"y":0.906,"rx":0.269,"ry":0.269,"c":true},{"p":[27],"x":1.13,"y":1.407,"rx":0.481,"ry":0.192,"c":false},{"p":[24],"x":2.122,"y":1.357,"rx":0.449,"ry":0.179,"c":false},{"p":[19],"x":2.82,"y":1.206,"rx":0.224,"ry":0.288,"c":false},{"p":[12],"x":3.204,"y":0.802,"rx":0.269,"ry":0.269,"c":true},{"p":[14],"x":3.493,"y":1.173,"rx":0.321,"ry":0.256,"c":false},{"p":[25],"x":4.246,"y":0.846,"rx":0.353,"ry":0.16,"c":false},{"p":[26],"x":4.612,"y":1.097,"rx":0.16,"ry":0.16,"c":true},{"p":[23],"x":4.14,"y":1.282,"rx":0.353,"ry":0.16,"c":false},{"p":[5],"x":4.987,"y":0.905,"rx":0.321,"ry":0.224,"c":false},{"p":[11],"x":5.597,"y":0.894,"rx":0.224,"ry":0.224,"c":true},{"p":[22],"x":5.104,"y":1.317,"rx":0.385,"ry":0.192,"c":false},{"p":[15],"x":5.908,"y":1.341,"rx":0.321,"ry":0.224,"c":false},{"p":[18],"x":6.305,"y":0.936,"rx":0.449,"ry":0.224,"c":false},{"p":[3],"x":6.729,"y":0.433,"rx":0.353,"ry":0.353,"c":true},{"p":[8],"x":7.529,"y":0.393,"rx":0.365,"ry":0.365,"c":true},{"p":[1,2],"x":8.299,"y":0.386,"rx":0.385,"ry":0.385,"c":true},{"p":[7],"x":9.05,"y":0.381,"rx":0.353,"ry":0.353,"c":true},{"p":[28],"x":9.839,"y":0.373,"rx":0.353,"ry":0.353,"c":true},{"p":[10],"x":10.511,"y":0.34,"rx":0.256,"ry":0.256,"c":true},{"p":[6],"x":11.124,"y":0.405,"rx":0.353,"ry":0.353,"c":true},{"p":[4],"x":11.895,"y":0.431,"rx":0.353,"ry":0.353,"c":true},{"p":[7],"x":12.512,"y":0.56,"rx":0.224,"ry":0.481,"c":false},{"p":[1,2],"x":13.083,"y":0.435,"rx":0.372,"ry":0.372,"c":true},{"p":[19],"x":6.647,"y":1.368,"rx":0.256,"ry":0.192,"c":false},{"p":[12],"x":7.079,"y":1.025,"rx":0.256,"ry":0.256,"c":true},{"p":[16],"x":7.597,"y":1.108,"rx":0.256,"ry":0.256,"c":true},{"p":[17],"x":7.259,"y":1.414,"rx":0.141,"ry":0.141,"c":true},{"p":[9],"x":6.953,"y":1.705,"rx":0.481,"ry":0.179,"c":false},{"p":[15],"x":8.142,"y":1.1,"rx":0.353,"ry":0.321,"c":false},{"p":[27],"x":7.757,"y":1.729,"rx":0.385,"ry":0.288,"c":false},{"p":[24],"x":8.397,"y":1.697,"rx":0.353,"ry":0.321,"c":false},{"p":[14],"x":8.774,"y":0.908,"rx":0.321,"ry":0.288,"c":false},{"p":[5],"x":9.45,"y":0.938,"rx":0.308,"ry":0.308,"c":true},{"p":[20],"x":9.091,"y":1.47,"rx":0.417,"ry":0.256,"c":false},{"p":[19],"x":10.127,"y":1.001,"rx":0.353,"ry":0.321,"c":false},{"p":[26],"x":10.172,"y":1.255,"rx":0.141,"ry":0.141,"c":true},{"p":[12],"x":10.828,"y":0.901,"rx":0.308,"ry":0.308,"c":true},{"p":[25],"x":11.375,"y":0.938,"rx":0.192,"ry":0.192,"c":true},{"p":[11],"x":11.857,"y":0.946,"rx":0.16,"ry":0.16,"c":true},{"p":[15],"x":10.162,"y":1.705,"rx":0.385,"ry":0.288,"c":false},{"p":[14],"x":10.83,"y":1.575,"rx":0.192,"ry":0.288,"c":false},{"p":[17],"x":11.2,"y":1.287,"rx":0.128,"ry":0.128,"c":true},{"p":[22],"x":11.19,"y":1.718,"rx":0.192,"ry":0.16,"c":false},{"p":[24],"x":11.841,"y":1.268,"rx":0.385,"ry":0.192,"c":false},{"p":[27],"x":10.666,"y":2.161,"rx":0.545,"ry":0.224,"c":false},{"p":[18],"x":12.449,"y":1.225,"rx":0.192,"ry":0.16,"c":false},{"p":[12],"x":12.977,"y":0.89,"rx":0.192,"ry":0.115,"c":false},{"p":[16],"x":13.28,"y":1.164,"rx":0.288,"ry":0.288,"c":true},{"p":[23],"x":12.816,"y":1.508,"rx":0.192,"ry":0.128,"c":false},{"p":[20],"x":13.274,"y":1.677,"rx":0.321,"ry":0.16,"c":false}]};
+
+const MONTHS=["januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
+const MSHORT=["J","F","M","A","M","J","J","A","S","O","N","D"];
+
+/* ============ State ============ */
+function freshState(){
+  const plants={};
+  for(const [nr,label,perVak,total,notes,cutMarch,rebloomCut] of LIST){
+    const lib=LIB.find(l=>l.key.test(label));
+    plants[nr]=Object.assign({},lib,{key:undefined,nr,label,perVak,total,notes,cutMarch:!!cutMarch,rebloomCut:!!rebloomCut});
+  }
+  const s={plants, plan:JSON.parse(JSON.stringify(ORIG_PLAN)), title:"Border van Herman", v:2, backdrop:"schutting", north:0};
+  const w=13.7; s.unit=15/w; s.unitY=s.unit; return s;
+}
+function migrate(s){
+  if(!s) return s;
+  if(s.v!==2){ if(s.title==="Border van Herman"){ s.unit=15/13.7; } s.unitY=s.unitY||s.unit; s.backdrop=s.backdrop||"schutting"; s.north=s.north||0; s.v=2; }
+  return s;
+}
+let S;
+try{ const raw=localStorage.getItem("tuinplan-v1"); S=raw?JSON.parse(raw):null; }catch(e){ S=null; }
+S=migrate(S); if(!S||!S.plants||!S.plan) S=freshState();
+function save(){ try{ localStorage.setItem("tuinplan-v1",JSON.stringify(S)); }catch(e){} }
+
+let month=7, firstYear=false, showNums=true, showZones=false;
+
+/* ============ helpers ============ */
+function rng(seed){ let a=seed>>>0; return ()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}; }
+const C=(hex)=>new THREE.Color(hex);
+function mix(a,b,t){ return C(a).lerp(C(b),t); }
+function jit(col,r,amt=0.06){ const c=col.isColor?col.clone():C(col); const hsl={}; c.getHSL(hsl);
+  return new THREE.Color().setHSL((hsl.h+(r()-.5)*amt*0.3+1)%1, Math.min(1,Math.max(0,hsl.s+(r()-.5)*amt)), Math.min(1,Math.max(0,hsl.l+(r()-.5)*amt*1.2))); }
+const DEAD="#9b8460", STRAW="#b89b6a", DEADDARK="#5b4632";
+function inM(arr,m){ return arr&&arr.includes(m); }
+
+/* Seizoensstand van een plant in maand m */
+function seasonOf(P,m){
+  const st={hf:1, leaf:C(P.leaf), stage:"veg", flower:P.flower?C(P.flower):null, foliage:true, berries:false, label:""};
+  const bloom=P.bloom||[]; const first=bloom.length?Math.min(...bloom.filter(x=>x>=3).concat(bloom.length?[bloom[0]]:[])):7;
+  const last=bloom.length?bloom[bloom.length-1]:0;
+  const herb = P.winter==="stand"||P.winter==="collapse";
+  if(herb){
+    // groei vanaf maart tot de bloei
+    const peak=Math.max(5,Math.min(first,8));
+    if(m>=3&&m<peak) st.hf=Math.max(0.12,(m-2.5)/(peak-2.5));
+    if(m<=2||m===12){
+      if(P.winter==="stand"){ st.stage="winter"; st.leaf=C(P.winterCol||DEAD); st.hf=0.92; st.foliage=false; st.label="Wintersilhouet"; }
+      else { st.stage="dormant"; st.leaf=C(DEADDARK); st.hf=0.15; st.label="In rust"; }
+    } else if(m===3){ st.hf=0.12; st.label=P.cutMarch?"Teruggeknipt tot 15 cm, nieuwe scheuten":"Nieuwe scheuten"; }
+    if(m===11){ st.leaf=mix(P.autumn||P.leaf,DEAD,0.55); }
+    if(m===10&&P.autumn) st.leaf=mix(P.leaf,P.autumn,0.7);
+  } else if(P.winter==="deciduous"){
+    if(m<=3||m===12){ st.foliage=false; st.label="Kale takken"; }
+    if(m===4){ st.leaf=C(P.young||P.leaf); }
+    if(m===10) st.leaf=mix(P.leaf,P.autumn||P.leaf,0.75);
+    if(m===11){ st.leaf=C(P.autumn||P.leaf); st.label="Herfstkleur"; }
+  } else { // (half)wintergroen
+    if(P.winterLeaf&&(m<=3||m===12)) st.leaf=mix(P.leaf,P.winterLeaf,0.65);
+    if(P.young&&(m===4||m===5)) st.leaf=mix(P.leaf,P.young,m===4?0.8:0.4);
+    if(P.winter==="semi"&&(m<=2||m===12)) st.leaf=mix(P.leaf,"#6b5a3a",0.35);
+    if(P.autumn&&(m===10||m===11)) st.leaf=mix(P.leaf,P.autumn,0.6);
+    if(P.form==="ground"&&m===3){ st.hf=0.4; st.label="Eind februari teruggeknipt; bloemen eerst"; }
+  }
+  if(P.form==="grass"&&P.autumn&&(m===10||m===11)) st.leaf=mix(P.leaf,P.autumn,m===10?0.5:0.85);
+  if(P.form==="grass"&&P.winter==="stand"&&(m<=2||m===12)){ st.stage="winter"; st.leaf=C(P.winterCol||STRAW); st.hf=0.95; st.foliage=true; }
+  // bloei
+  if(inM(bloom,m)){
+    st.stage="bloom"; st.label="In bloei";
+    if(P.bud&&(m===11||m===12)) { st.flower=C(P.bud); st.label="Roze knoppen"; }
+  } else if(P.rebloom&&m===8){ st.stage="veg"; st.hf=Math.min(st.hf,0.7); st.label="Na eerste bloei teruggeknipt"; }
+  else if(bloom.length&&m===first-1&&m>=4){ st.stage="bud"; st.label="In knop"; }
+  else if(bloom.length&&P.seed&&( (m>last&&m<=12) || (P.winter==="stand"&&m<=2&&last>=6) ) && !(m<first&&m>=3)){
+    if(st.stage!=="dormant"){ st.stage="seed"; if(!st.label) st.label=m>=10?"Zaadhoofden":"Uitgebloeid"; }
+  }
+  if(P.berry&&inM(P.berryM,m)){ st.berries=true; if(!st.label) st.label="Bessen"; }
+  if(P.form==="grass"&&st.stage==="winter") st.label="Wintersilhouet";
+  if(!st.label) st.label = st.stage==="winter"?"Wintersilhouet":(m>=4&&m<=9?"Blad":"Rust");
+  if(firstYear){
+    const f = (P.form==="tree"||P.form==="shrub"||P.form==="cane")?0.45:0.75;
+    st.age=f;
+  } else st.age=1;
+  return st;
+}
+
+/* ============ Three.js scene ============ */
+const canvas=document.getElementById("three");
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;
+const scene=new THREE.Scene();
+scene.background=new THREE.Color("#cfe3f0");
+scene.fog=new THREE.Fog("#cfe3f0",40,120);
+const camera=new THREE.PerspectiveCamera(40,1,0.05,300);
+const controls=new THREE.OrbitControls(camera,canvas);
+controls.enableDamping=true; controls.maxPolarAngle=Math.PI*0.495; controls.minDistance=1; controls.maxDistance=60;
+const hemi=new THREE.HemisphereLight("#eaf4ff","#4d5a35",0.75); scene.add(hemi);
+const sun=new THREE.DirectionalLight("#fff6e5",0.95); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
+sun.shadow.bias=-0.0006; sun.shadow.normalBias=0.02; scene.add(sun); scene.add(sun.target);
+
+const lawn=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.MeshLambertMaterial({color:"#6f8f45"}));
+lawn.rotation.x=-Math.PI/2; lawn.receiveShadow=true; scene.add(lawn);
+let bedMesh=null, zoneLines=null, labelGroup=new THREE.Group(), hiRing=null; scene.add(labelGroup);
+
+/* Basisvormen (één InstancedMesh per vorm) */
+function baseGeoms(){
+  const stem=new THREE.CylinderGeometry(0.5,0.5,1,5,1,true); stem.translate(0,0.5,0);
+  const spike=new THREE.ConeGeometry(0.5,1,7); spike.translate(0,0.5,0);
+  const disc=new THREE.CylinderGeometry(0.5,0.5,1,12);
+  const ball=new THREE.IcosahedronGeometry(0.5,1);
+  const blob=new THREE.IcosahedronGeometry(0.5,1);
+  const leaf=new THREE.SphereGeometry(0.5,6,4); leaf.translate(0,0,0.5);
+  const blade=new THREE.BufferGeometry();
+  // getaperd blad, licht gebogen
+  const pts=[], segs=4; for(let i=0;i<=segs;i++){ const t=i/segs, w=0.5*(1-t*0.9), z=-0.25*t*t; pts.push(-w,t,z, w,t,z); }
+  const idx=[]; for(let i=0;i<segs;i++){ const a=i*2; idx.push(a,a+1,a+2, a+1,a+3,a+2); }
+  blade.setAttribute("position",new THREE.Float32BufferAttribute(pts,3)); blade.setIndex(idx); blade.computeVertexNormals();
+  return {stem,spike,disc,ball,blob,leaf,blade};
+}
+const GEO=baseGeoms();
+const MAT={
+  std:new THREE.MeshLambertMaterial({color:"#ffffff"}),
+  dbl:new THREE.MeshLambertMaterial({color:"#ffffff",side:THREE.DoubleSide}),
+};
+let meshes={};
+let B=null, CUR=-1;
+const _m=new THREE.Matrix4(), _q=new THREE.Quaternion(), _e=new THREE.Euler(), _p=new THREE.Vector3(), _s=new THREE.Vector3(), _v=new THREE.Vector3();
+function put(type,x,y,z,sx,sy,sz,ex,ey,ez,col){
+  _e.set(ex||0,ey||0,ez||0,"YXZ"); _q.setFromEuler(_e); _p.set(x,y,z); _s.set(sx,sy,sz); _m.compose(_p,_q,_s);
+  const b=B[type]; for(let i=0;i<16;i++) b.m.push(_m.elements[i]); b.c.push(col.r,col.g,col.b); b.o.push(CUR);
+}
+/* stengel van basis naar richting (yaw, tilt), lengte L; geeft toppunt terug */
+function stem(x,y,z,L,yaw,tilt,d,col){
+  put("stem",x,y,z,d,L,d,tilt,yaw,0,col);
+  _e.set(tilt,yaw,0,"YXZ"); _v.set(0,L,0).applyEuler(_e);
+  return [x+_v.x,y+_v.y,z+_v.z];
+}
+function dirTo(dx,dy,dz){ // yaw/tilt zodat (0,1,0) naar (dx,dy,dz) wijst
+  const len=Math.hypot(dx,dy,dz)||1; const tilt=Math.acos(Math.max(-1,Math.min(1,dy/len)));
+  const yaw=Math.atan2(dx,dz); return [yaw,tilt,len];
+}
+function stemTo(x,y,z,tx,ty,tz,d,col){ const [yaw,tilt,len]=dirTo(tx-x,ty-y,tz-z); return stem(x,y,z,len,yaw,tilt,d,col); }
+
+/* ---------- plantvormen ---------- */
+function foliage(x,z,r,W,H,col,n,flat=0.75){
+  for(let i=0;i<n;i++){ const a=r()*Math.PI*2, d=Math.sqrt(r())*W*0.32; const s=W*(0.28+r()*0.22);
+    put("blob",x+Math.cos(a)*d, H*(0.25+r()*0.5), z+Math.sin(a)*d, s, Math.max(0.03,H*0.9*flat)*(0.8+r()*0.4), s, 0,r()*6,0, jit(col,r)); }
+}
+function leavesAlong(x0,y0,z0,x1,y1,z1,n,size,col,r){
+  for(let i=1;i<=n;i++){ const t=i/(n+1)*0.85; const x=x0+(x1-x0)*t,y=y0+(y1-y0)*t,z=z0+(z1-z0)*t;
+    for(let k=0;k<2;k++){ const yaw=r()*6.28; put("leaf",x,y,z,size*0.35,size*0.06,size,-0.5,yaw+(k*Math.PI),0,jit(col,r)); } }
+}
+const F={};
+F.spikes=(x,z,P,st,r)=>{
+  const W=P.w*st.age, H=P.h*st.hf*(st.age<1?0.85:1);
+  const winter=st.stage==="winter", dormant=st.stage==="dormant";
+  if(dormant){ foliage(x,z,r,W*0.6,0.06,st.leaf,4,1); return; }
+  if(!winter) foliage(x,z,r,W,H*0.3,st.leaf,6,0.6);
+  const n=Math.round((P.stems||10)*(st.age<1?0.6:1)); const stemCol=P.stem?C(P.stem):st.leaf.clone().multiplyScalar(0.8);
+  const sl=P.spikeLen||0.2, sw=P.spikeW||0.03;
+  for(let i=0;i<n;i++){
+    const a=r()*6.28, d=r()*W*0.18, tilt=0.05+r()*0.22; const L=H*(1-sl)*(0.8+r()*0.25);
+    const bx=x+Math.cos(a)*d, bz=z+Math.sin(a)*d; const yaw=Math.atan2(Math.cos(a),Math.sin(a));
+    const top=stem(bx,0,bz,L,yaw,tilt,0.012+sw*0.15,winter?C(P.winterCol||DEAD):stemCol);
+    if(!winter&&H>0.2) leavesAlong(bx,0,bz,top[0],top[1],top[2],P.candelabra?4:2,Math.min(0.14,H*0.18),st.leaf,r);
+    const len=H*sl*(0.8+r()*0.3);
+    const show = st.stage==="bloom"||st.stage==="seed"||st.stage==="bud"||winter;
+    if(!show||H<0.15) continue;
+    let col = st.stage==="bloom"?st.flower:(st.stage==="bud"?st.leaf.clone().lerp(st.flower,0.25):C(P.seed||DEADDARK));
+    const lenF = st.stage==="bud"?0.45:1;
+    if(P.florets&&st.stage==="bloom"){
+      const k=12; for(let j=0;j<k;j++){ const t=j/k; const rr=sw*(1-t*0.75);
+        for(let q=0;q<3;q++){ const aa=q*2.1+j*0.7; const c=(j+q)%2?C(P.flower2):st.flower;
+          put("ball",top[0]+Math.cos(aa)*rr*0.6,top[1]+t*len,top[2]+Math.sin(aa)*rr*0.6,rr*0.75,rr*0.6,rr*0.75,0,0,0,jit(c,r,0.04)); } }
+    } else {
+      put("spike",top[0],top[1],top[2],sw*(winter?0.6:1),len*lenF,sw*(winter?0.6:1),tilt*0.6,yaw,0,jit(col,r,0.05));
+    }
+    if(P.candelabra&&st.stage!=="bud"){ for(let j=0;j<3;j++){ const aa=r()*6.28;
+      put("spike",top[0]+Math.cos(aa)*0.02,top[1]-0.01,top[2]+Math.sin(aa)*0.02,sw*0.7,len*0.7,sw*0.7,0.35,aa,0,jit(col,r,0.05)); } }
+  }
+};
+F.daisy=(x,z,P,st,r)=>{
+  const W=P.w*st.age, H=P.h*st.hf*(st.age<1?0.85:1);
+  if(st.stage==="dormant"){ foliage(x,z,r,W*0.6,0.06,st.leaf,4,1); return; }
+  const winter=st.stage==="winter";
+  if(!winter) foliage(x,z,r,W,Math.max(0.08,H*(P.h<0.5?0.55:0.35)),st.leaf,P.h<0.5?9:7,0.7);
+  const ns=Math.round((P.stems||8)*(st.age<1?0.6:1)); const heads=Math.round((P.heads||12)*(st.age<1?0.5:1));
+  const tops=[]; const stemCol=winter?C(P.winterCol||DEAD):st.leaf.clone().multiplyScalar(0.85);
+  for(let i=0;i<ns;i++){ const a=r()*6.28, d=r()*W*0.15; const bx=x+Math.cos(a)*d,bz=z+Math.sin(a)*d;
+    const ra=r()*6.28, rd=r()*W*0.42; const ty=H*(0.72+r()*0.28);
+    const t=stemTo(bx,0,bz,x+Math.cos(ra)*rd,ty,z+Math.sin(ra)*rd,Math.max(0.006,P.head*0.12),stemCol); tops.push(t);
+    if(!winter&&H>0.4) leavesAlong(bx,0,bz,t[0],t[1],t[2],2,Math.min(0.15,H*0.12),st.leaf,r); }
+  if(st.stage==="veg"||H<0.12) return;
+  for(let i=0;i<heads;i++){ const t=tops[i%tops.length]; const spread=heads>ns?P.head*2.2+W*0.06:0;
+    const a=r()*6.28, d=r()*spread; const hx=t[0]+Math.cos(a)*d, hz=t[2]+Math.sin(a)*d, hy=t[1]-r()*spread*0.6;
+    const s=P.head*(0.85+r()*0.3);
+    if(st.stage==="bud"){ put("ball",hx,hy,hz,s*0.35,s*0.35,s*0.35,0,0,0,jit(st.leaf,r)); continue; }
+    if(st.stage==="seed"||winter){ put("ball",hx,hy,hz,s*0.35,s*(P.droop?0.5:0.3),s*0.35,0,0,0,jit(C(P.seedCenter||DEADDARK),r)); continue; }
+    const col=(P.flower2&&r()<0.45)?C(P.flower2):st.flower;
+    const tiltX=(r()-.5)*0.9, tiltZ=(r()-.5)*0.9;
+    if(P.droop){ put("spike",hx,hy-s*0.18,hz,s,s*0.22,s,Math.PI+tiltX*0.3,0,tiltZ*0.3,jit(col,r,0.04)); }
+    else put("disc",hx,hy,hz,s,s*0.07,s,tiltX,0,tiltZ,jit(col,r,0.04));
+    if(P.center){ const cs=s*(P.droop?0.38:0.34); put("ball",hx,hy+s*(P.droop?0.08:0.03),hz,cs,cs*(P.droop?1.3:0.7),cs,0,0,0,jit(P.center,r,0.04)); }
+  }
+};
+F.buttons=(x,z,P,st,r)=>{
+  const W=P.w*st.age, H=P.h*st.hf;
+  if(st.stage!=="winter") foliage(x,z,r,W*0.9,Math.max(0.08,Math.min(0.3,H*0.3)),st.leaf,7,0.5);
+  if(st.stage==="veg"||H<0.25) return;
+  const n=Math.round(12*(st.age<1?0.6:1)); const sc=st.stage==="winter"?C(DEAD):st.leaf.clone().multiplyScalar(0.7);
+  for(let i=0;i<n;i++){ const a=r()*6.28, rd=r()*W*0.45, ty=H*(0.75+r()*0.25);
+    const t=stemTo(x,0,z,x+Math.cos(a)*rd,ty,z+Math.sin(a)*rd,0.006,sc);
+    for(let k=0;k<3;k++){ const aa=r()*6.28, dd=0.03+r()*0.06; const hx=t[0]+Math.cos(aa)*dd, hz=t[2]+Math.sin(aa)*dd, hy=t[1]-r()*0.05;
+      stemTo(t[0],t[1]-0.06,t[2],hx,hy,hz,0.004,sc);
+      const col=st.stage==="bloom"?st.flower:(st.stage==="bud"?mix(P.leaf,P.flower,0.3):C(P.seed||DEADDARK));
+      put("ball",hx,hy+0.012,hz,0.016,0.03,0.016,0,0,0,jit(col,r,0.05)); } }
+};
+F.umbel=(x,z,P,st,r)=>{
+  const W=P.w*st.age, H=P.h*st.hf*(st.age<1?0.85:1);
+  if(st.stage==="dormant"){ foliage(x,z,r,W*0.5,0.06,st.leaf,3,1); return; }
+  const winter=st.stage==="winter";
+  if(!winter&&P.h<0.7) foliage(x,z,r,W,H*0.55,st.leaf,8,0.7);
+  const n=Math.round((P.stems||8)*(st.age<1?0.6:1)); const stemCol=winter?C(DEAD):(P.stem?C(P.stem):st.leaf.clone().multiplyScalar(0.8));
+  const u=P.umbel||0.08;
+  for(let i=0;i<n;i++){ const a=r()*6.28, d=r()*W*0.15; const bx=x+Math.cos(a)*d,bz=z+Math.sin(a)*d;
+    const ra=r()*6.28, rd=r()*W*0.3; const ty=H*(0.85+r()*0.15);
+    const t=stemTo(bx,0,bz,x+Math.cos(ra)*rd,ty,z+Math.sin(ra)*rd,Math.max(0.007,u*0.12),stemCol);
+    if(!winter&&P.h>=0.7) leavesAlong(bx,0,bz,t[0],t[1],t[2],P.h>1.5?5:3,Math.min(0.2,P.h*0.11),st.leaf,r);
+    if(st.stage==="veg"||H<0.2) continue;
+    const col=st.stage==="bloom"?st.flower:(st.stage==="bud"?mix(P.leaf,P.flower,0.35):C(P.seed||DEADDARK));
+    const k=st.stage==="bud"?5:11; const bs=u*(st.stage==="bud"?0.35:0.5);
+    for(let j=0;j<k;j++){ const aa=r()*6.28, dd=Math.sqrt(r())*u; const hy=t[1]+(1-(dd/u)**2)*u*0.45;
+      put("ball",t[0]+Math.cos(aa)*dd,hy,t[2]+Math.sin(aa)*dd,bs,bs*0.75,bs,0,0,0,jit(col,r,0.05)); }
+  }
+};
+F.grass=(x,z,P,st,r)=>{
+  const W=P.w*st.age, H=P.h*st.hf*(st.age<1?0.8:1); const lh=H*(P.leafH||0.6);
+  const n=Math.round((P.blades||40)*(st.age<1?0.6:1));
+  for(let i=0;i<n;i++){ const a=r()*6.28, d=r()*W*0.12; const tilt=(P.arch||0.3)*(0.3+r()*0.8);
+    const yaw=a+Math.PI/2; const L=lh*(0.6+r()*0.45);
+    put("blade",x+Math.cos(a)*d,0,z+Math.sin(a)*d,0.012+r()*0.01,L,L*(0.5+(P.arch||0.3)),tilt,Math.atan2(Math.cos(a),Math.sin(a))+Math.PI,0,jit(st.leaf,r,0.08)); }
+  const show=st.stage==="bloom"||st.stage==="seed"||st.stage==="winter";
+  if(!show||H<0.2) return;
+  const np=Math.round(n*0.3); const pc=st.stage==="bloom"?st.flower:(st.stage==="winter"?mix(P.winterCol||STRAW,"#8a7550",0.3):mix(P.flower,STRAW,0.6));
+  for(let i=0;i<np;i++){ const a=r()*6.28, rd=r()*W*0.3; const ty=H*(0.85+r()*0.15);
+    const t=stemTo(x,0,z,x+Math.cos(a)*rd,ty*0.8,z+Math.sin(a)*rd,0.004,st.leaf.clone().multiplyScalar(0.9));
+    const ph=H*0.2; put("ball",t[0],t[1]+ph*0.5,t[2],ph*0.22,ph,ph*0.22,(r()-.5)*0.3,0,(r()-.5)*0.3,jit(pc,r,0.05)); }
+};
+F.fern=(x,z,P,st,r)=>{
+  const W=P.w*st.age, H=P.h*st.hf; const n=Math.round(11*(st.age<1?0.6:1));
+  for(let i=0;i<n;i++){ const a=i/n*6.28+r()*0.4; const young=r()<0.35;
+    const col=jit(young?st.leaf:mix(P.leaf,st.leaf,0.3),r,0.06);
+    const L=Math.hypot(W*0.5,H)*(0.45+r()*0.15);
+    // twee segmenten: steil omhoog, dan overhangend
+    put("leaf",x,0.02,z,0.11*(W/0.5),0.02,L,-(0.9+r()*0.2),a,0,col);
+    const mx=x+Math.sin(a)*Math.cos(-1.0)*L*0.9, my=Math.sin(1.0)*L*0.95, mz=z+Math.cos(a)*Math.cos(-1.0)*L*0.9;
+    put("leaf",mx,my,mz,0.09*(W/0.5),0.02,L*0.8,-(0.05+r()*0.25),a,0,col);
+  }
+};
+F.mound=(x,z,P,st,r)=>{
+  const W=P.w*st.age, H=P.h*st.hf*(st.age<1?0.85:1);
+  if(st.stage==="dormant"){ foliage(x,z,r,W*0.5,0.05,st.leaf,4,1); return; }
+  const winter=st.stage==="winter";
+  if(winter){ for(let i=0;i<14;i++){ const a=r()*6.28, rd=r()*W*0.4; stemTo(x,0,z,x+Math.cos(a)*rd,H*(0.6+r()*0.4),z+Math.sin(a)*rd,0.005,C(DEAD)); } return; }
+  for(let i=0;i<10;i++){ const a=r()*6.28, d=Math.sqrt(r())*W*0.3; const s=W*(0.3+r()*0.2);
+    put("blob",x+Math.cos(a)*d,H*0.35*(0.6+r()*0.6),z+Math.sin(a)*d,s,H*0.75,s,0,r()*6,0,jit(st.leaf,r)); }
+  if(st.stage!=="bloom"&&st.stage!=="bud"&&st.stage!=="seed") return;
+  const nf=Math.round((P.flowers||60)*(st.age<1?0.5:1)*(st.stage==="bud"?0.4:1));
+  const col=st.stage==="bloom"?st.flower:(st.stage==="bud"?mix(P.leaf,P.flower,0.3):mix(P.flower,DEAD,0.7));
+  for(let i=0;i<nf;i++){ const a=r()*6.28, u=Math.sqrt(r()); const rx=Math.cos(a)*u*W*0.5, rz=Math.sin(a)*u*W*0.5;
+    const y=H*Math.sqrt(Math.max(0,1-u*u))*1.02+0.01; const s=(P.fsize||0.03)*(0.8+r()*0.4);
+    put("ball",x+rx,y,z+rz,s,s*0.45,s,0,0,0,jit(col,r,0.05)); if(i%7===0&&P.flower2) put("ball",x+rx,y+s*0.2,z+rz,s*0.3,s*0.3,s*0.3,0,0,0,C(P.flower2)); }
+};
+F.feather=(x,z,P,st,r)=>{ // Amsonia: veel fijne stengels met naaldblad
+  const W=P.w*st.age, H=P.h*st.hf*(st.age<1?0.85:1); const winter=st.stage==="winter";
+  const n=Math.round(26*(st.age<1?0.6:1));
+  for(let i=0;i<n;i++){ const a=r()*6.28, rd=r()*W*0.45; const t=stemTo(x,0,z,x+Math.cos(a)*rd,H*(0.75+r()*0.25),z+Math.sin(a)*rd,0.006,winter?C(DEAD):st.leaf.clone().multiplyScalar(0.8));
+    if(!winter){ for(let k=0;k<5;k++){ const f=0.35+k*0.13; const px=x+(t[0]-x)*f, py=t[1]*f, pz=z+(t[2]-z)*f;
+      put("blade",px,py,pz,0.012,0.12+r()*0.05,0.02,0.9+r()*0.5,r()*6.28,0,jit(st.leaf,r,0.07)); } }
+    if(st.stage==="bloom"){ for(let k=0;k<4;k++){ const aa=r()*6.28; put("ball",t[0]+Math.cos(aa)*0.025,t[1]+r()*0.02,t[2]+Math.sin(aa)*0.025,0.018,0.008,0.018,0,0,0,jit(st.flower,r,0.04)); } }
+  }
+};
+F.airy=(x,z,P,st,r)=>{ // Gillenia
+  const W=P.w*st.age, H=P.h*st.hf*(st.age<1?0.85:1);
+  if(st.stage==="dormant"){ foliage(x,z,r,W*0.5,0.05,st.leaf,3,1); return; }
+  const n=Math.round(16*(st.age<1?0.6:1)); const sc=C(P.stem||"#7a3a2a");
+  for(let i=0;i<n;i++){ const a=r()*6.28, rd=r()*W*0.45; const t=stemTo(x,0,z,x+Math.cos(a)*rd,H*(0.7+r()*0.3),z+Math.sin(a)*rd,0.006,sc);
+    for(let k=0;k<3;k++){ const f=0.35+k*0.2; put("leaf",x+(t[0]-x)*f,t[1]*f,z+(t[2]-z)*f,0.03,0.006,0.07,-0.4,r()*6.28,0,jit(st.leaf,r)); }
+    if(st.stage==="bloom"){ for(let k=0;k<6;k++){ const aa=r()*6.28, dd=r()*0.07;
+      put("disc",t[0]+Math.cos(aa)*dd,t[1]+r()*0.04,t[2]+Math.sin(aa)*dd,0.028,0.004,0.028,(r()-.5),0,(r()-.5),jit(st.flower,r,0.03)); } }
+    else if(st.stage==="bud"){ put("ball",t[0],t[1],t[2],0.012,0.012,0.012,0,0,0,C("#c46a5a")); }
+  }
+};
+F.ground=(x,z,P,st,r)=>{ // Epimedium
+  const W=P.w*st.age, H=P.h*st.hf; const n=Math.round(22*(st.age<1?0.6:1));
+  for(let i=0;i<n;i++){ const a=r()*6.28, d=Math.sqrt(r())*W*0.42; const y=0.05+r()*Math.max(0.05,H*0.75);
+    put("leaf",x+Math.cos(a)*d,y,z+Math.sin(a)*d,0.07,0.008,0.09,-0.25-r()*0.3,r()*6.28,0,jit(st.leaf,r,0.07)); }
+  if(st.stage==="bloom"){ for(let i=0;i<10;i++){ const a=r()*6.28, rd=r()*W*0.35; const t=stemTo(x,0,z,x+Math.cos(a)*rd,0.18+r()*0.12,z+Math.sin(a)*rd,0.003,C("#7a5a3a"));
+    for(let k=0;k<4;k++) put("ball",t[0]+(r()-.5)*0.05,t[1]-r()*0.04,t[2]+(r()-.5)*0.05,0.016,0.012,0.016,0,0,0,jit(st.flower,r,0.04)); } }
+};
+F.shrub=(x,z,P,st,r)=>{ // Viburnum tinus
+  const W=P.w*st.age, H=P.h*st.age;
+  for(let i=0;i<18;i++){ const a=r()*6.28, u=Math.sqrt(r())*0.85; const y=H*(0.2+r()*0.65);
+    const rad=W*0.5*Math.sqrt(Math.max(0.05,1-((y/H-0.5)*2)**2))*u; const s=W*(0.32+r()*0.15);
+    put("blob",x+Math.cos(a)*rad,y,z+Math.sin(a)*rad,s,s*0.9,s,0,r()*6,0,jit(st.leaf,r,0.05)); }
+  const flowerOn=st.stage==="bloom", berry=st.berries;
+  if(!flowerOn&&!berry) return;
+  const n=flowerOn?80:40;
+  for(let i=0;i<n;i++){ const a=r()*6.28, v=r(); const y=H*(0.25+v*0.75); const k=Math.sqrt(Math.max(0.05,1-((y/H-0.55)*2)**2));
+    const rad=W*0.5*k*0.98; const c=flowerOn?st.flower:C(P.berry); const s=flowerOn?0.06:0.025;
+    put("ball",x+Math.cos(a)*rad,y,z+Math.sin(a)*rad,s,s*0.5,s,0,0,0,jit(c,r,0.04)); }
+};
+F.cane=(x,z,P,st,r)=>{ // Nandina
+  const W=P.w*st.age, H=P.h*st.age; const n=8; const cane=C("#8a6a3a");
+  for(let i=0;i<n;i++){ const a=r()*6.28, d=r()*W*0.12; const bx=x+Math.cos(a)*d,bz=z+Math.sin(a)*d;
+    const t=stemTo(bx,0,bz,bx+Math.cos(a)*W*0.15,H*(0.7+r()*0.3),bz+Math.sin(a)*W*0.15,0.014,cane);
+    for(let k=0;k<3;k++){ const f=0.45+k*0.25; const px=bx+(t[0]-bx)*f, py=t[1]*f, pz=bz+(t[2]-bz)*f;
+      const s=W*(0.28+r()*0.12)*(1-k*0.15); const col=k===2&&st.leaf? mix(st.leaf, P.young, 0.35):st.leaf;
+      put("blob",px,py,pz,s,s*0.32,s,0,r()*6,0,jit(col,r,0.06)); }
+    if(st.stage==="bloom") put("ball",t[0],t[1]+0.08,t[2],0.07,0.18,0.07,0,0,0,jit(st.flower,r,0.03));
+    if(st.berries){ for(let k=0;k<7;k++) put("ball",t[0]+(r()-.5)*0.09,t[1]+r()*0.06,t[2]+(r()-.5)*0.09,0.022,0.022,0.022,0,0,0,jit(P.berry,r,0.03)); }
+  }
+};
+F.tree=(x,z,P,st,r)=>{ // Amelanchier meerstammig
+  const sc=st.age<1?0.45:1; const H=P.h*sc, W=P.w*sc; const bark=C("#6e6862");
+  const trunks=4; const ends=[];
+  for(let i=0;i<trunks;i++){ const a=i/trunks*6.28+r()*0.6; const bx=x+Math.cos(a)*0.06, bz=z+Math.sin(a)*0.06;
+    const t=stemTo(bx,0,bz,x+Math.cos(a)*W*0.18,H*0.55,z+Math.sin(a)*W*0.18,0.05*sc+0.02,bark);
+    for(let k=0;k<3;k++){ const aa=a+(k-1)*0.7+(r()-.5)*0.3; const e=stemTo(t[0],t[1],t[2],t[0]+Math.cos(aa)*W*0.25,H*(0.82+r()*0.18),t[2]+Math.sin(aa)*W*0.25,0.025*sc+0.008,bark); ends.push(e);
+      for(let q=0;q<3;q++){ const ab=r()*6.28; ends.push(stemTo(e[0],e[1],e[2],e[0]+Math.cos(ab)*W*0.12,e[1]+H*0.08*(r()+0.3),e[2]+Math.sin(ab)*W*0.12,0.008,bark)); } } }
+  if(st.foliage){ for(const e of ends){ for(let k=0;k<3;k++){ const s=W*(0.07+r()*0.05)*(st.stage==="bloom"?0.6:1);
+      put("blob",e[0]+(r()-.5)*W*0.12,e[1]+(r()-.5)*W*0.08,e[2]+(r()-.5)*W*0.12,s,s*0.7,s,0,r()*6,0,jit(st.leaf,r,0.06)); } } }
+  if(st.stage==="bloom"){ for(const e of ends){ for(let k=0;k<9;k++){ put("ball",e[0]+(r()-.5)*W*0.18,e[1]+(r()-.4)*W*0.12,e[2]+(r()-.5)*W*0.18,0.06,0.05,0.06,0,0,0,jit(st.flower,r,0.03)); } } }
+  if(st.berries){ for(const e of ends){ for(let k=0;k<5;k++) put("ball",e[0]+(r()-.5)*W*0.16,e[1]+(r()-.6)*W*0.1,e[2]+(r()-.5)*W*0.16,0.02,0.02,0.02,0,0,0,jit(P.berry,r,0.03)); } }
+};
+
+/* Dobbelsteenpatroon: posities binnen een vak (genormaliseerd -1..1) */
+function dice(n){
+  const D={1:[[0,0]],2:[[-.5,-.5],[.5,.5]],3:[[-.6,-.55],[0,0],[.6,.55]],4:[[-.5,-.5],[.5,-.5],[-.5,.5],[.5,.5]],
+    5:[[-.55,-.55],[.55,-.55],[0,0],[-.55,.55],[.55,.55]],6:[[-.55,-.6],[.55,-.6],[-.55,0],[.55,0],[-.55,.6],[.55,.6]]};
+  if(D[n]) return D[n];
+  const out=[]; const cols=Math.ceil(Math.sqrt(n)); for(let i=0;i<n;i++){ const cx=i%cols, cy=Math.floor(i/cols); out.push([(cx/(cols-1||1))*1.2-0.6,(cy/(Math.ceil(n/cols)-1||1))*1.2-0.6]); } return out;
+}
+
+/* ============ Opbouw van de scène ============ */
+let plantInst=[]; // {nr, zone}
+function planToWorld(px,py){ return [px*S.unit, py*(S.unitY||S.unit)]; }
+function bounds(){
+  let minx=1e9,maxx=-1e9,miny=1e9,maxy=-1e9;
+  for(const [x,y] of S.plan.outline){ minx=Math.min(minx,x);maxx=Math.max(maxx,x);miny=Math.min(miny,y);maxy=Math.max(maxy,y); }
+  return {minx,maxx,miny,maxy};
+}
+function buildBed(){
+  if(bedMesh){ scene.remove(bedMesh); bedMesh.geometry.dispose(); }
+  const sh=new THREE.Shape(); S.plan.outline.forEach(([x,y],i)=>{ const [wx,wz]=planToWorld(x,y); i?sh.lineTo(wx,-wz):sh.moveTo(wx,-wz); });
+  const g=new THREE.ShapeGeometry(sh); g.rotateX(-Math.PI/2);
+  bedMesh=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:"#4a3627"})); bedMesh.position.y=0.006; bedMesh.receiveShadow=true; scene.add(bedMesh);
+}
+function buildZoneLines(){
+  if(zoneLines){ scene.remove(zoneLines); zoneLines.geometry.dispose(); zoneLines=null; }
+  if(!showZones) return;
+  const pts=[];
+  for(const z of S.plan.zones){ const seg=36; for(let i=0;i<seg;i++){ const a0=i/seg*6.283,a1=(i+1)/seg*6.283;
+    const p0=planToWorld(z.x+Math.cos(a0)*z.rx,z.y+Math.sin(a0)*z.ry), p1=planToWorld(z.x+Math.cos(a1)*z.rx,z.y+Math.sin(a1)*z.ry);
+    pts.push(p0[0],0.02,p0[1],p1[0],0.02,p1[1]); } }
+  const g=new THREE.BufferGeometry(); g.setAttribute("position",new THREE.Float32BufferAttribute(pts,3));
+  zoneLines=new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:"#f3efe2"})); scene.add(zoneLines);
+}
+const labelTex={};
+function labelSprite(text){
+  if(!labelTex[text]){ const c=document.createElement("canvas"); c.width=128;c.height=128; const x=c.getContext("2d");
+    x.fillStyle="rgba(255,255,255,0.92)"; x.beginPath(); x.arc(64,64,58,0,7); x.fill(); x.lineWidth=5; x.strokeStyle="#2f3438"; x.stroke();
+    x.fillStyle="#1f2326"; x.font=`700 ${text.length>3?44:58}px Kalam, "Comic Sans MS", cursive`; x.textAlign="center"; x.textBaseline="middle"; x.fillText(text,64,70);
+    labelTex[text]=new THREE.CanvasTexture(c); labelTex[text].encoding=THREE.sRGBEncoding; }
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTex[text],depthTest:false,transparent:true})); s.renderOrder=10; return s;
+}
+function buildLabels(){
+  labelGroup.clear(); if(!showNums) return;
+  for(const z of S.plan.zones){ const h=Math.max(...z.p.map(n=>{ const P=S.plants[n]; if(!P) return 0.5; const st=seasonOf(P,month); return P.form==="tree"?Math.min(1.6,P.h*st.age*0.4):P.h*(st.hf||1)*(st.age||1); }));
+    const [wx,wz]=planToWorld(z.x,z.y); const s=labelSprite(z.p.join("/")); s.position.set(wx,h+0.25,wz); const k=0.32; s.scale.set(k,k,k); labelGroup.add(s); }
+}
+function buildPlants(){
+  for(const k in meshes){ scene.remove(meshes[k]); meshes[k].dispose(); }
+  meshes={}; B={}; for(const k in GEO) B[k]={m:[],c:[],o:[]};
+  plantInst=[];
+  S.plan.zones.forEach((z,zi)=>{
+    const items=[]; for(const nr of z.p){ const P=S.plants[nr]; if(!P) continue; for(let i=0;i<(P.perVak||1);i++) items.push(nr); }
+    if(!items.length) return;
+    // de enkele (grootste) plant in het midden van het dobbelsteenpatroon
+    if(items.length===3&&z.p.length>1){ const single=z.p.find(n=>S.plants[n]&&S.plants[n].perVak===1); if(single){ const rest=items.filter(n=>n!==single); items.splice(0,3,rest[0],single,rest[1]); } }
+    const slots=dice(items.length);
+    items.forEach((nr,i)=>{
+      const P=S.plants[nr]; const st=seasonOf(P,month); const r=rng(zi*131+i*17+nr*7);
+      const [sx,sy]=slots[i]; const px=z.x+sx*z.rx*0.62, py=z.y+sy*z.ry*0.62; const [wx,wz]=planToWorld(px,py);
+      CUR=plantInst.length; plantInst.push({nr,zone:zi});
+      (F[P.form]||F.mound)(wx+(r()-.5)*0.05,wz+(r()-.5)*0.05,P,st,r);
+    });
+  });
+  for(const k in B){ const b=B[k]; const n=b.o.length; if(!n) continue;
+    const mesh=new THREE.InstancedMesh(GEO[k],(k==="blade"||k==="leaf")?MAT.dbl:MAT.std,n);
+    mesh.instanceMatrix.array.set(b.m); mesh.instanceMatrix.needsUpdate=true;
+    mesh.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(b.c),3);
+    mesh.castShadow=true; mesh.receiveShadow=true; mesh.userData.owner=b.o; mesh.frustumCulled=false;
+    meshes[k]=mesh; scene.add(mesh); }
+  B=null;
+}
+/* ============ Achtergrond (schutting, haag, muur) ============ */
+const BACKDROPS={schutting:"Houten schutting",haag:"Taxushaag",beuk:"Beukenhaag",muur:"Bakstenen muur",open:"Open (gazon)"};
+let backGroup=new THREE.Group(); scene.add(backGroup);
+function stripeTex(kind){
+  const c=document.createElement("canvas"); c.width=256; c.height=256; const g=c.getContext("2d");
+  if(kind==="schutting"){ g.fillStyle="#5e4733"; g.fillRect(0,0,256,256); for(let i=0;i<8;i++){ g.fillStyle=i%2?"#665039":"#584230"; g.fillRect(i*32,0,30,256); g.fillStyle="#3b2c1f"; g.fillRect(i*32+30,0,2,256); } }
+  else { g.fillStyle="#cfc6b6"; g.fillRect(0,0,256,256); const bw=64,bh=21; for(let y=0;y<256;y+=bh){ const off=(y/bh)%2?bw/2:0; for(let x=-bw;x<256+bw;x+=bw){ const t=Math.random(); g.fillStyle=`rgb(${150+t*30|0},${78+t*20|0},${58+t*14|0})`; g.fillRect(x+off+2,y+2,bw-4,bh-4); } } }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.encoding=THREE.sRGBEncoding; return t;
+}
+const TEX={};
+function backEdge(){ // achterrand: per x het minimale y van de omtrek
+  const o=S.plan.outline; const bb=bounds(); const pts=[]; const steps=Math.max(8,Math.round((bb.maxx-bb.minx)*S.unit/0.6));
+  for(let i=0;i<=steps;i++){ const x=bb.minx+(bb.maxx-bb.minx)*i/steps; let ymin=null;
+    for(let k=0;k<o.length;k++){ const a=o[k], b=o[(k+1)%o.length]; if((a[0]-x)*(b[0]-x)<=0&&a[0]!==b[0]){ const t=(x-a[0])/(b[0]-a[0]); const y=a[1]+t*(b[1]-a[1]); if(ymin==null||y<ymin) ymin=y; } }
+    if(ymin!=null) pts.push(planToWorld(x,ymin)); }
+  return pts;
+}
+function buildBackdrop(){
+  backGroup.children.forEach(o=>{ o.geometry&&o.geometry.dispose(); }); backGroup.clear();
+  const kind=S.backdrop||"schutting"; if(kind==="open") return;
+  const pts=backEdge(); const H=kind==="muur"?1.8:(kind==="schutting"?1.8:1.9); const off=kind==="schutting"||kind==="muur"?0.12:0.45;
+  for(let i=0;i<pts.length-1;i++){ const [x0,z0]=pts[i],[x1,z1]=pts[i+1]; const len=Math.hypot(x1-x0,z1-z0); const ang=Math.atan2(z1-z0,x1-x0);
+    const mx=(x0+x1)/2, mz=(z0+z1)/2-off;
+    if(kind==="schutting"||kind==="muur"){
+      if(!TEX[kind]) TEX[kind]=stripeTex(kind);
+      const t=TEX[kind]; const th=kind==="muur"?0.22:0.04;
+      const mat=new THREE.MeshLambertMaterial({map:t}); mat.map=t.clone(); mat.map.needsUpdate=true; mat.map.repeat.set(len/(kind==="muur"?1.0:1.6),H/(kind==="muur"?0.33:1.8));
+      const m=new THREE.Mesh(new THREE.BoxGeometry(len+0.01,H,th),mat); m.position.set(mx,H/2,mz); m.rotation.y=-ang; m.castShadow=m.receiveShadow=true; backGroup.add(m);
+      if(kind==="schutting"&&i%3===0){ const p=new THREE.Mesh(new THREE.BoxGeometry(0.09,H+0.08,0.09),new THREE.MeshLambertMaterial({color:"#3f3022"})); p.position.set(x0,(H+0.08)/2,z0-off-0.05); p.castShadow=true; backGroup.add(p); }
+      if(kind==="muur"){ const cap=new THREE.Mesh(new THREE.BoxGeometry(len+0.02,0.06,th+0.06),new THREE.MeshLambertMaterial({color:"#8f8a82"})); cap.position.set(mx,H+0.03,mz); cap.rotation.y=-ang; cap.castShadow=true; backGroup.add(cap); }
+    } else {
+      const winter=month<=3||month===12; const col=kind==="beuk"?(winter||month===11?"#8b5a2b":(month===4?"#9fbe4a":"#4f7a2c")):"#2c4723";
+      const r=rng(i*97+7); const n=Math.max(1,Math.round(len/0.35));
+      for(let k=0;k<n;k++){ const t=(k+0.5)/n; const x=x0+(x1-x0)*t, z=z0+(z1-z0)*t-off;
+        const m=new THREE.Mesh(GEO.blob,new THREE.MeshLambertMaterial({color:jit(col,r,0.05)})); m.scale.set(0.75,H*(0.95+r()*0.1),0.9); m.position.set(x,H*0.5,z); m.castShadow=m.receiveShadow=true; backGroup.add(m); }
+    }
+  }
+}
+let northSprite=null;
+function placeNorth(cx,cz,L){
+  if(!northSprite){ const c=document.createElement("canvas"); c.width=128;c.height=128; const g=c.getContext("2d");
+    g.fillStyle="rgba(255,255,255,.92)"; g.beginPath(); g.arc(64,64,58,0,7); g.fill(); g.strokeStyle="#b4541c"; g.lineWidth=6; g.stroke();
+    g.fillStyle="#b4541c"; g.font="700 64px Bricolage Grotesque, system-ui, sans-serif"; g.textAlign="center"; g.textBaseline="middle"; g.fillText("N",64,68);
+    const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; northSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthTest:false})); northSprite.renderOrder=11; northSprite.scale.set(0.8,0.8,0.8); scene.add(northSprite); }
+  const [dx,dz]=bearingToWorld(0); const R=Math.max(L*0.5,4)+2.5; northSprite.position.set(cx+dx*R,0.5,cz+dz*R);
+}
+
+/* Zonnestand voor Nederland (52° NB, 5° OL) op de 21e van de maand, klokuur (zomertijd apr–okt) */
+function sunPos(m,clock){
+  const lat=52*Math.PI/180; const n=[21,52,80,111,141,172,202,233,264,294,325,355][m-1];
+  const dec=23.44*Math.PI/180*Math.sin(2*Math.PI*(284+n)/365);
+  const solar=clock-((m>=4&&m<=10)?2:1)+5/15; const H=(solar-12)*15*Math.PI/180;
+  const sinEl=Math.sin(lat)*Math.sin(dec)+Math.cos(lat)*Math.cos(dec)*Math.cos(H); const el=Math.asin(sinEl);
+  let az=Math.atan2(Math.sin(H),Math.cos(H)*Math.sin(lat)-Math.tan(dec)*Math.cos(lat))+Math.PI; // vanaf noord, met de klok mee
+  return {el,az};
+}
+const WIND=["noorden","noordoosten","oosten","zuidoosten","zuiden","zuidwesten","westen","noordwesten"];
+function windName(deg){ return WIND[Math.round(((deg%360)+360)%360/45)%8]; }
+/* kompasrichting (graden) → richting op de tekening/wereld (x naar rechts, z naar voren) */
+function bearingToWorld(b){ const phi=(b+(S.north||0))*Math.PI/180; return [Math.sin(phi),-Math.cos(phi)]; }
+let clock=14;
+function placeSun(){
+  const bb=bounds(); const uy=S.unitY||S.unit; const cx=(bb.minx+bb.maxx)/2*S.unit, cz=(bb.miny+bb.maxy)/2*uy; const L=(bb.maxx-bb.minx)*S.unit;
+  const sp=sunPos(month,clock); const el=Math.max(sp.el,0.02); const [dx,dz]=bearingToWorld(sp.az*180/Math.PI);
+  const d=40; sun.position.set(cx+dx*d*Math.cos(el),d*Math.sin(el),cz+dz*d*Math.cos(el)); sun.target.position.set(cx,0,cz);
+  const up=sp.el>0; sun.intensity=up?0.35+0.75*Math.sin(el):0; hemi.intensity=up?0.5+0.35*Math.sin(el):0.35;
+  const sky=up?new THREE.Color("#cfe3f0").lerp(new THREE.Color("#f1d3b0"),Math.max(0,0.35-Math.sin(el))*1.6):new THREE.Color("#5a6a80");
+  scene.background=sky; scene.fog.color=sky;
+  $("sunLbl").textContent=up?`Zon ${Math.round(sp.el*180/Math.PI)}° hoog, vanuit het ${windName(sp.az*180/Math.PI)}`:"Zon is onder";
+  placeNorth(cx,cz,L);
+  const sc=sun.shadow.camera; const half=Math.max(L,8)*0.6+3; sc.left=-half; sc.right=half; sc.top=half; sc.bottom=-half; sc.near=1; sc.far=80; sc.updateProjectionMatrix();
+  const lawnC=[ "#7b8a52","#7d8c50","#6f9046","#6a9a43","#649a40","#669640","#6c9142","#748d45","#6f9145","#6c9244","#73894c","#7a8752"][month-1];
+  lawn.material.color.set(lawnC);
+}
+let camInit=false;
+function frameCamera(top=false){
+  const bb=bounds(); const cx=(bb.minx+bb.maxx)/2*S.unit, cz=(bb.miny+bb.maxy)/2*(S.unitY||S.unit); const L=(bb.maxx-bb.minx)*S.unit;
+  controls.target.set(cx,0.3,cz);
+  const dist=Math.max(6,L*0.75);
+  if(top) camera.position.set(cx,dist*1.3,cz+0.01); else camera.position.set(cx-L*0.08,dist*0.3,cz+dist*0.62);
+  controls.update();
+}
+function rebuild(){
+  buildBed(); buildBackdrop(); buildZoneLines(); buildPlants(); buildLabels(); placeSun(); if(!camInit){ frameCamera(); camInit=true; }
+  if(hiRing) placeRing(selZoneIdx);
+}
+function resize(){ const r=canvas.parentElement.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(canvas.parentElement);
+function loop(){ requestAnimationFrame(loop); if(document.hidden) return; controls.update(); renderer.render(scene,camera); }
+
+/* ============ Selectie ============ */
+const ray=new THREE.Raycaster(); const ndc=new THREE.Vector2(); let selNr=null, selZoneIdx=null; let downAt=null;
+canvas.addEventListener("pointerdown",e=>{ downAt=[e.clientX,e.clientY]; });
+canvas.addEventListener("pointerup",e=>{
+  if(!downAt||Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])>6) return;
+  const r=canvas.getBoundingClientRect(); ndc.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
+  ray.setFromCamera(ndc,camera); const hits=ray.intersectObjects(Object.values(meshes),false);
+  if(hits.length){ const h=hits[0]; const owner=h.object.userData.owner[h.instanceId]; const pi=plantInst[owner]; if(pi){ selectPlant(pi.nr,pi.zone); showTab("planten"); } }
+});
+function placeRing(zi){
+  if(hiRing){ scene.remove(hiRing); hiRing=null; } if(zi==null||!S.plan.zones[zi]) return;
+  const z=S.plan.zones[zi]; const g=new THREE.RingGeometry(0.92,1,48); g.rotateX(-Math.PI/2);
+  hiRing=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:"#fff7c2"})); const [wx,wz]=planToWorld(z.x,z.y);
+  hiRing.position.set(wx,0.03,wz); hiRing.scale.set(z.rx*S.unit,1,z.ry*(S.unitY||S.unit)); scene.add(hiRing);
+}
+
+/* ============ Panelen ============ */
+const $=id=>document.getElementById(id);
+function showTab(t){ for(const n of ["planten","plan","inlezen"]){ $("tab-"+n).setAttribute("aria-selected",n===t); $("pane-"+n).hidden=n!==t; } if(t==="plan") drawPlan(); }
+["planten","plan","inlezen"].forEach(n=>$("tab-"+n).addEventListener("click",()=>showTab(n)));
+
+function swatches(P){ const st=seasonOf(P,month); const a=[`<i style="background:#${st.leaf.getHexString()}" title="blad"></i>`];
+  if(P.flower) a.push(`<i style="background:${P.flower}" title="bloem"></i>`); if(P.flower2) a.push(`<i style="background:${P.flower2}"></i>`); return a.join(""); }
+function esc(s){ return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function renderList(){
+  const nrs=Object.keys(S.plants).map(Number).sort((a,b)=>a-b);
+  $("plist").innerHTML=nrs.map(nr=>{ const P=S.plants[nr]; const st=seasonOf(P,month);
+    return `<button class="prow${selNr===nr?" sel":""}" data-nr="${nr}"><span class="nr">${nr}</span><span class="pname"><b>${esc(P.name||P.label)}</b><span>${esc(P.nl||"")} · ${fmtH(P.h)}</span></span>
+    <span class="row" style="gap:6px"><span class="sw">${swatches(P)}</span><span class="state${st.stage==="bloom"?" bloom":""}">${esc(st.label)}</span></span></button>`; }).join("");
+  $("plist").querySelectorAll(".prow").forEach(b=>b.addEventListener("click",()=>selectPlant(+b.dataset.nr)));
+}
+function fmtH(h){ return h>=1?(h.toFixed(1).replace(".",",")+" m"):(Math.round(h*100)+" cm"); }
+function selectPlant(nr,zi){
+  selNr=nr; const P=S.plants[nr]; if(!P) return;
+  if(zi==null){ zi=S.plan.zones.findIndex(z=>z.p.includes(nr)); }
+  selZoneIdx=zi; placeRing(zi);
+  const st=seasonOf(P,month); const card=$("infoCard"); card.hidden=false;
+  const vakken=S.plan.zones.filter(z=>z.p.includes(nr)).length;
+  const bar=MSHORT.map((m,i)=>{ const on=(P.bloom||[]).includes(i+1); return `<span style="${on?`background:${P.flower};color:${isLight(P.flower)?"#222":"#fff"}`:""}${i+1===month?";outline:2px solid var(--ink)":""}">${m}</span>`; }).join("");
+  card.innerHTML=`<div class="top"><span class="nr">${nr}</span><div style="min-width:0"><h2>${esc(P.name)}</h2><div class="note">${esc(P.nl||"")} · op je lijst: ${esc(P.label)}</div></div></div>
+   <p style="margin:0">${esc(P.desc||"")}</p>
+   <h3>Bloeit</h3><div class="bloombar">${bar}</div>
+   <dl class="kv"><dt>Nu (${MONTHS[month-1]})</dt><dd>${esc(st.label)}</dd>
+   <dt>Hoogte × breedte</dt><dd>${fmtH(P.h)} × ${fmtH(P.w)}</dd>
+   <dt>Aantal</dt><dd>${P.perVak} per vak · ${vakken} vakken op tekening · ${P.total} op lijst</dd>
+   <dt>Snoeien</dt><dd>${[P.cutMarch?"Maart tot 15 cm afknippen":"",P.rebloomCut?"Na 1e bloei vóór 21 juni afknippen voor herbloei":"",P.notes].filter(Boolean).map(esc).join(". ")||"–"}</dd></dl>
+   <div class="row"><label class="row">Bloem <input type="color" id="eFlower" value="${P.flower||"#ffffff"}"></label>
+     <label class="row">Blad <input type="color" id="eLeaf" value="${P.leaf}"></label>
+     <label class="row">Hoogte <input type="number" id="eH" value="${P.h}" min="0.05" max="10" step="0.05" style="width:70px"> m</label></div>
+   <div class="note">Kleur klopt niet met jouw plant? Pas hem hier aan; de 3D-weergave volgt direct. <a href="https://www.rhs.org.uk/plants/search-results?query=${encodeURIComponent(P.name.replace(/'.*'/,"").trim())}" target="_blank" rel="noopener">Opzoeken bij RHS</a></div>`;
+  $("eFlower").addEventListener("change",e=>{ P.flower=e.target.value; changed(); });
+  $("eLeaf").addEventListener("change",e=>{ P.leaf=e.target.value; changed(); });
+  $("eH").addEventListener("change",e=>{ const v=parseFloat(e.target.value); if(v>0){ P.h=v; changed(); } });
+  renderList();
+}
+function isLight(hex){ const c=C(hex||"#fff"); return (0.299*c.r+0.587*c.g+0.114*c.b)>0.6; }
+
+/* Maand */
+function seasonText(){
+  const inb=Object.values(S.plants).filter(P=>(P.bloom||[]).includes(month)).map(P=>P.nr);
+  return inb.length?`In bloei: ${inb.length} ${inb.length===1?"soort":"soorten"} (nr. ${inb.join(", ")})`:"Niets in bloei. Structuur van grassen, wintergroen en zaadhoofden.";
+}
+function setMonth(m){ month=m; $("month").value=m; $("monthLbl").textContent=MONTHS[m-1][0].toUpperCase()+MONTHS[m-1].slice(1); $("seasonLbl").textContent=seasonText(); scheduleRebuild(30); if(selNr) selectPlant(selNr,selZoneIdx); else renderList(); }
+$("month").addEventListener("input",e=>setMonth(+e.target.value));
+let playT=null;
+$("tPlay").addEventListener("click",()=>{ const on=$("tPlay").getAttribute("aria-pressed")!=="true"; $("tPlay").setAttribute("aria-pressed",on); $("tPlay").textContent=on?"❚❚ Pauze":"▶ Jaar afspelen";
+  clearInterval(playT); if(on) playT=setInterval(()=>setMonth(month%12+1),1600); });
+function toggle(id,fn){ $(id).addEventListener("click",()=>{ const on=$(id).getAttribute("aria-pressed")!=="true"; $(id).setAttribute("aria-pressed",on); fn(on); }); }
+toggle("tNums",on=>{ showNums=on; buildLabels(); });
+toggle("tZones",on=>{ showZones=on; buildZoneLines(); });
+toggle("tAge",on=>{ firstYear=on; scheduleRebuild(10); });
+let topView=false; $("tTop").addEventListener("click",()=>{ topView=!topView; $("tTop").textContent=topView?"Vooraanzicht":"Bovenaanzicht"; frameCamera(topView); });
+
+let rbT=null; function scheduleRebuild(ms=200){ clearTimeout(rbT); rbT=setTimeout(rebuild,ms); }
+function changed(){ save(); scheduleRebuild(150); renderList(); renderCheck(); updateDims(); if(!$("pane-plan").hidden) drawPlan(); }
+
+/* ============ Plan-editor (2D) ============ */
+const pc=$("plan2d"); const pctx=pc.getContext("2d"); let pv={s:1,ox:0,oy:0}; let selZ=null, drag=null;
+function planView(){ const r=pc.getBoundingClientRect(); const dpr=Math.min(2,window.devicePixelRatio||1); pc.width=Math.max(10,r.width*dpr); pc.height=Math.max(10,r.height*dpr);
+  const bb=bounds(); const pad=14*dpr; const cw=Math.min(pc.height*0.44,60*dpr)+12*dpr; const aw=pc.width-2*pad-cw;
+  const s=Math.min(aw/(bb.maxx-bb.minx||1),(pc.height-2*pad)/(bb.maxy-bb.miny||1));
+  pv={s,ox:pad-bb.minx*s+(aw-(bb.maxx-bb.minx)*s)/2,oy:pad-bb.miny*s+((pc.height-2*pad)-(bb.maxy-bb.miny)*s)/2,dpr}; }
+const toC=(x,y)=>[pv.ox+x*pv.s,pv.oy+y*pv.s]; const fromC=(cx,cy)=>[(cx-pv.ox)/pv.s,(cy-pv.oy)/pv.s];
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim()||"#333"; }
+function drawPlan(){
+  planView(); const g=pctx; const ink=cssVar("--pencil"), grid=cssVar("--grid"), sel=cssVar("--moss");
+  g.clearRect(0,0,pc.width,pc.height);
+  g.strokeStyle=grid; g.lineWidth=1; const step=pv.s/6; for(let x=pv.ox%step;x<pc.width;x+=step){ g.beginPath();g.moveTo(x,0);g.lineTo(x,pc.height);g.stroke(); } for(let y=pv.oy%step;y<pc.height;y+=step){ g.beginPath();g.moveTo(0,y);g.lineTo(pc.width,y);g.stroke(); }
+  g.strokeStyle=ink; g.lineWidth=1.6*pv.dpr; g.beginPath(); S.plan.outline.forEach(([x,y],i)=>{ const [cx,cy]=toC(x,y); i?g.lineTo(cx,cy):g.moveTo(cx,cy); }); g.closePath(); g.stroke();
+  if($("editOutline").checked){ g.fillStyle=sel; for(const [x,y] of S.plan.outline){ const [cx,cy]=toC(x,y); g.beginPath(); g.arc(cx,cy,4*pv.dpr,0,7); g.fill(); } }
+  drawCompass(g);
+  S.plan.zones.forEach((z,i)=>{ const [cx,cy]=toC(z.x,z.y); g.beginPath(); g.ellipse(cx,cy,z.rx*pv.s,z.ry*pv.s,0,0,7);
+    const P=S.plants[z.p[0]]; g.fillStyle=P?(P.flower||P.leaf)+"55":"transparent"; g.fill();
+    g.lineWidth=(i===selZ?2.6:1.2)*pv.dpr; g.strokeStyle=i===selZ?sel:ink; g.stroke();
+    g.fillStyle=ink; g.font=`700 ${Math.max(10,Math.min(16,z.ry*pv.s*0.8))/ (1) }px Kalam, cursive`; g.textAlign="center"; g.textBaseline="middle"; g.fillText(z.p.join("/"),cx,cy+1); });
+}
+function compassC(){ const R=Math.min(pc.height*0.22,30*pv.dpr); return [pc.width-R-8*pv.dpr,R+8*pv.dpr,R]; }
+function drawCompass(g){ const [cx,cy,R]=compassC(); const a=(S.north||0)*Math.PI/180; const warn=cssVar("--warn"), ink=cssVar("--pencil");
+  g.save(); g.translate(cx,cy); g.fillStyle=cssVar("--sheet"); g.strokeStyle=ink; g.lineWidth=1*pv.dpr; g.beginPath(); g.arc(0,0,R,0,7); g.fill(); g.stroke();
+  g.rotate(a); g.fillStyle=warn; g.beginPath(); g.moveTo(0,-R*0.85); g.lineTo(R*0.22,0); g.lineTo(-R*0.22,0); g.closePath(); g.fill();
+  g.fillStyle=ink; g.beginPath(); g.moveTo(0,R*0.85); g.lineTo(R*0.22,0); g.lineTo(-R*0.22,0); g.closePath(); g.globalAlpha=0.35; g.fill(); g.globalAlpha=1;
+  g.fillStyle=warn; g.font=`700 ${Math.round(R*0.5)}px Bricolage Grotesque, sans-serif`; g.textAlign="center"; g.textBaseline="middle"; g.fillText("N",0,-R*0.85-R*0.35+R*0.3); g.restore(); }
+function hitZone(px,py){ let best=null,bd=1e9; S.plan.zones.forEach((z,i)=>{ const d=((px-z.x)/z.rx)**2+((py-z.y)/z.ry)**2; if(d<1&&d<bd){bd=d;best=i;} }); return best; }
+pc.addEventListener("pointerdown",e=>{ const r=pc.getBoundingClientRect(); const ccx=(e.clientX-r.left)*pv.dpr, ccy=(e.clientY-r.top)*pv.dpr; const [px,py]=fromC(ccx,ccy);
+  { const [kx,ky,R]=compassC(); if(Math.hypot(ccx-kx,ccy-ky)<R*1.1){ drag={type:"n"}; pc.setPointerCapture(e.pointerId); setNorthFrom(ccx,ccy); return; } }
+  if($("editOutline").checked){ const i=S.plan.outline.findIndex(([x,y])=>Math.hypot(x-px,y-py)*pv.s<10*pv.dpr); if(i>=0){ drag={type:"o",i}; pc.setPointerCapture(e.pointerId); return; } }
+  const i=hitZone(px,py); selZ=i; if(i!=null){ drag={type:"z",i,dx:px-S.plan.zones[i].x,dy:py-S.plan.zones[i].y}; pc.setPointerCapture(e.pointerId); }
+  renderZoneEdit(); drawPlan(); });
+function setNorthFrom(x,y){ const [kx,ky]=compassC(); let a=Math.atan2(x-kx,-(y-ky))*180/Math.PI; a=(Math.round(a/5)*5+360)%360; S.north=a; drawPlan(); }
+pc.addEventListener("pointermove",e=>{ if(!drag) return; const r=pc.getBoundingClientRect(); if(drag.type==="n"){ setNorthFrom((e.clientX-r.left)*pv.dpr,(e.clientY-r.top)*pv.dpr); return; } const [px,py]=fromC((e.clientX-r.left)*pv.dpr,(e.clientY-r.top)*pv.dpr);
+  if(drag.type==="z"){ const z=S.plan.zones[drag.i]; z.x=+(px-drag.dx).toFixed(3); z.y=+(py-drag.dy).toFixed(3); }
+  else { S.plan.outline[drag.i]=[+px.toFixed(3),+py.toFixed(3)]; }
+  drawPlan(); });
+pc.addEventListener("pointerup",()=>{ if(drag){ drag=null; changed(); } });
+function renderZoneEdit(){
+  const box=$("zoneEdit"); if(selZ==null){ box.hidden=true; return; } const z=S.plan.zones[selZ]; box.hidden=false;
+  box.innerHTML=`<h3>Vak ${selZ+1}</h3>
+   <div class="row"><label for="zP">Plantnummer(s)</label><input type="text" id="zP" value="${z.p.join(", ")}" style="width:90px"></div>
+   <div class="row"><label for="zRx">Breedte</label><input type="range" id="zRx" min="0.08" max="1.5" step="0.01" value="${z.rx}">
+   <label for="zRy">Diepte</label><input type="range" id="zRy" min="0.08" max="1.5" step="0.01" value="${z.ry}"></div>
+   <div class="row"><button class="btn" id="zDel">Vak verwijderen</button><span class="note">${z.p.map(n=>S.plants[n]?esc(S.plants[n].name):"onbekend nr. "+n).join(" + ")}</span></div>`;
+  $("zP").addEventListener("change",e=>{ const v=e.target.value.split(/[^0-9]+/).filter(Boolean).map(Number); if(v.length){ z.p=v; changed(); renderZoneEdit(); } });
+  $("zRx").addEventListener("input",e=>{ z.rx=+e.target.value; drawPlan(); }); $("zRx").addEventListener("change",changed);
+  $("zRy").addEventListener("input",e=>{ z.ry=+e.target.value; drawPlan(); }); $("zRy").addEventListener("change",changed);
+  $("zDel").addEventListener("click",()=>{ S.plan.zones.splice(selZ,1); selZ=null; renderZoneEdit(); changed(); });
+}
+$("addZone").addEventListener("click",()=>{ const bb=bounds(); S.plan.zones.push({p:[Object.keys(S.plants).map(Number)[0]||1],x:(bb.minx+bb.maxx)/2,y:(bb.miny+bb.maxy)/2,rx:0.3,ry:0.3,c:true}); selZ=S.plan.zones.length-1; renderZoneEdit(); changed(); });
+$("editOutline").addEventListener("change",drawPlan);
+new ResizeObserver(()=>{ if(!$("pane-plan").hidden) drawPlan(); }).observe(pc);
+
+function updateDims(){ const bb=bounds(); const L=(bb.maxx-bb.minx)*S.unit, D=(bb.maxy-bb.miny)*(S.unitY||S.unit);
+  if(document.activeElement!==$("lenM")) $("lenM").value=L.toFixed(1); if(document.activeElement!==$("depM")) $("depM").value=D.toFixed(1);
+  $("bdSel").value=S.backdrop||"schutting"; { const nv=String(S.north||0); if(![...$("northSel").options].some(o=>o.value===nv)){ const o=document.createElement("option"); o.value=nv; o.textContent=nv+"° (met kompas)"; $("northSel").appendChild(o); } $("northSel").value=nv; }
+  const front=((180-(S.north||0))%360+360)%360; $("facingLbl").textContent=`De voorkant van de border kijkt naar het ${windName(front)}${front>=135&&front<=225?": veel zon.":front<=45||front>=315?": weinig directe zon.":"."}`;
+  $("subtitle").textContent=`${S.title||"Border"} · ${Object.keys(S.plants).length} soorten · ${S.plan.zones.length} vakken · ${L.toFixed(1).replace(".",",")} × ${D.toFixed(1).replace(".",",")} m`; }
+$("lenM").addEventListener("change",e=>{ const v=parseFloat(e.target.value); const bb=bounds(); if(v>0){ S.unit=v/(bb.maxx-bb.minx); camInit=false; changed(); } });
+$("depM").addEventListener("change",e=>{ const v=parseFloat(e.target.value); const bb=bounds(); if(v>0){ S.unitY=v/(bb.maxy-bb.miny); camInit=false; changed(); } });
+$("bdSel").innerHTML=Object.entries(BACKDROPS).map(([k,v])=>`<option value="${k}">${v}</option>`).join("");
+$("bdSel").addEventListener("change",e=>{ S.backdrop=e.target.value; changed(); });
+const NDIRS=[[0,"Boven (achterkant)"],[45,"Rechtsboven"],[90,"Rechts"],[135,"Rechtsonder"],[180,"Onder (voorkant)"],[225,"Linksonder"],[270,"Links"],[315,"Linksboven"]];
+$("northSel").innerHTML=NDIRS.map(([d,t])=>`<option value="${d}">${t}</option>`).join("");
+$("northSel").addEventListener("change",e=>{ S.north=+e.target.value; changed(); });
+$("clock").addEventListener("input",e=>{ clock=+e.target.value; const h=Math.floor(clock), mi=clock%1?"30":"00"; $("clockLbl").textContent=`${h}:${mi}`; placeSun(); });
+
+function renderCheck(){
+  const lines=[]; let ok=0;
+  for(const nr of Object.keys(S.plants).map(Number).sort((a,b)=>a-b)){ const P=S.plants[nr]; const v=S.plan.zones.filter(z=>z.p.includes(nr)).length; const n=v*(P.perVak||1);
+    if(P.total&&n!==P.total) lines.push(`<div class="bad">Nr. ${nr} ${esc(P.name)}: ${v} vakken × ${P.perVak} = ${n}, lijst zegt ${P.total}</div>`); else ok++; }
+  const unknown=[...new Set(S.plan.zones.flatMap(z=>z.p).filter(n=>!S.plants[n]))];
+  if(unknown.length) lines.push(`<div class="bad">Nummers zonder plant op de lijst: ${unknown.join(", ")}</div>`);
+  lines.unshift(`<div class="good">${ok} soorten kloppen met de lijst.</div>`);
+  $("countCheck").innerHTML=lines.join("");
+}
+$("copyJson").addEventListener("click",async()=>{ const t=JSON.stringify(S); try{ await navigator.clipboard.writeText(t); $("saveNote").textContent="Plan gekopieerd naar het klembord."; }catch(e){ $("jsonIn").value=t; $("jsonIn").select(); $("saveNote").textContent="Kopiëren lukte niet automatisch. De tekst staat geselecteerd in het vak hierboven."; } });
+$("loadJson").addEventListener("click",()=>{ try{ const o=JSON.parse($("jsonIn").value); if(!o.plants||!o.plan) throw 0; S=o; camInit=false; selNr=null; $("infoCard").hidden=true; changed(); $("saveNote").textContent="Plan geladen."; }catch(e){ $("saveNote").textContent="Dit is geen geldig plan. Plak de tekst die je met 'Kopieer plan' hebt gekregen."; } });
+let resetArm=false; $("resetPlan").addEventListener("click",()=>{ if(!resetArm){ resetArm=true; $("resetPlan").textContent="Zeker? Tik nogmaals"; setTimeout(()=>{resetArm=false;$("resetPlan").textContent="Terug naar origineel";},3000); return; }
+  S=freshState(); camInit=false; selNr=null; selZ=null; $("infoCard").hidden=true; renderZoneEdit(); changed(); $("resetPlan").textContent="Terug naar origineel"; resetArm=false; });
+
+/* ============ Inlezen met Claude ============ */
+/*@PROMPTS@*/
+let fPlan=null, fList=[]; let sampleFn=null; let impCtl=null;
+function thumbs(el,files){ el.innerHTML=""; for(const f of files){ const i=document.createElement("img"); i.alt=f.name; i.src=URL.createObjectURL(f); el.appendChild(i); } }
+$("fPlan").addEventListener("change",e=>{ fPlan=e.target.files[0]||null; thumbs($("thPlan"),fPlan?[fPlan]:[]); });
+$("fList").addEventListener("change",e=>{ fList=[...e.target.files]; thumbs($("thList"),fList); });
+function log(t){ $("impLog").textContent=t; }
+$("stopImport").addEventListener("click",()=>impCtl&&impCtl.abort());
+/* Twee manieren om Claude te vragen: binnen Claude (artifact) via `sample`, of in de app via de eigen server (BORDERPLAN_API). */
+function apiUrl(){ return (window.BORDERPLAN_API||"").replace(/\/$/,""); }
+function toJpeg(file,max=1600){ return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>{ const k=Math.min(1,max/Math.max(img.width,img.height)); const c=document.createElement("canvas"); c.width=Math.round(img.width*k); c.height=Math.round(img.height*k);
+  c.getContext("2d").drawImage(img,0,0,c.width,c.height); res({media_type:"image/jpeg",data:c.toDataURL("image/jpeg",0.85).split(",")[1]}); }; img.onerror=()=>rej({code:"image_rejected"}); img.src=URL.createObjectURL(file); }); }
+async function apiCall(task,body,signal){
+  let r; try{ r=await fetch(apiUrl()+"/api/"+task,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body),signal}); }
+  catch(e){ throw {code:e&&e.name==="AbortError"?"cancelled":"upstream_error"}; }
+  if(!r.ok) throw {code:r.status===429?"rate_limited":r.status===422?"invalid_json":r.status===413?"image_rejected":"upstream_error"};
+  return r.json();
+}
+const AI={
+  available(){ return !!sampleFn||!!apiUrl(); },
+  async maxImages(){ if(sampleFn){ const lim=await sampleFn.limits().catch(()=>null); return lim&&lim.images?lim.images.maxCount:0; } return 6; },
+  async plan(imgs,signal){ if(sampleFn) return sampleFn.json(PROMPT_PLAN,{images:imgs,signal,modelTier:"complex"});
+    return apiCall("plan",{images:await Promise.all(imgs.map(f=>toJpeg(f)))},signal); },
+  async plants(list,signal){ if(sampleFn) return sampleFn.json(promptPlants(list),{signal}); return apiCall("plants",{plants:list},signal); },
+};
+$("runImport").addEventListener("click",async()=>{
+  if(!AI.available()){ $("impUnavail").hidden=false; return; }
+  if(!fPlan){ log("Kies eerst een foto van de tekening."); return; }
+  const maxN=await AI.maxImages(); if(!maxN){ $("impUnavail").hidden=false; log("Foto's versturen naar Claude is in deze weergave niet beschikbaar."); return; }
+  const imgs=[fPlan,...fList].slice(0,maxN);
+  impCtl=new AbortController(); $("runImport").disabled=true; $("stopImport").hidden=false;
+  log("Claude bekijkt de tekening en de plantenlijst… (dit duurt meestal een halve tot twee minuten)");
+  try{
+    const res=await AI.plan(imgs,impCtl.signal);
+    if(!res||!Array.isArray(res.zones)||!Array.isArray(res.plants)) throw {code:"invalid_json"};
+    log(`Gevonden: ${res.plants.length} planten en ${res.zones.length} vakken. Nu plantgegevens opzoeken…`);
+    const plants={}; const unknown=[];
+    for(const p of res.plants){ const nr=+p.nr; if(!nr) continue; const lib=LIB.find(l=>l.key.test(p.label||""));
+      plants[nr]=Object.assign({},lib||{},{key:undefined,nr,label:p.label,perVak:+p.perVak||1,total:+p.total||0,notes:p.notes||"",cutMarch:!!p.cutMarch,rebloomCut:!!p.rebloomCut});
+      if(!lib) unknown.push(nr); }
+    if(unknown.length){
+      const info=await AI.plants(unknown.map(nr=>({nr,label:plants[nr].label})),impCtl.signal)||{};
+      const defs={spikes:{spikeLen:0.22,spikeW:0.035,stems:10},daisy:{head:0.05,heads:16,stems:9},umbel:{umbel:0.08,stems:8},grass:{leafH:0.6,blades:48,arch:0.4},mound:{flowers:70,fsize:0.03}};
+      for(const nr of unknown){ const d=info[nr]||info[String(nr)]||{}; const form=String(d.form||"mound").split(/\s/)[0];
+        Object.assign(plants[nr],defs[form]||{},{name:d.name||plants[nr].label,nl:d.nl||"",form:F[form]?form:"mound",h:+d.h||0.6,w:+d.w||0.5,leaf:d.leaf||"#4f6f34",autumn:d.autumn||undefined,
+          flower:d.flower||undefined,flower2:d.flower2||undefined,center:d.center||undefined,bloom:Array.isArray(d.bloom)?d.bloom.map(Number):[],winter:d.winter||"stand",seed:d.seed||undefined,desc:d.desc||""}); }
+    }
+    const L=parseFloat($("impLen").value)||15;
+    S={v:2,plants,plan:{outline:res.outline,zones:res.zones.map(z=>({p:(z.p||[]).map(Number),x:+z.x,y:+z.y,rx:+z.rx||0.02,ry:+z.ry||0.02,c:!!z.c}))},title:"Ingelezen plan"};
+    const bb=bounds(); S.unit=L/((bb.maxx-bb.minx)||1); const Dm=parseFloat($("impDep").value); S.unitY=Dm>0?Dm/((bb.maxy-bb.miny)||1):S.unit;
+    S.backdrop=$("bdSel").value||"schutting"; S.north=Number.isFinite(+res.north)&&res.north!==null?((Math.round(+res.north)%360)+360)%360:0;
+    camInit=false; selNr=null; $("infoCard").hidden=true; changed();
+    log(`Klaar. ${Object.keys(plants).length} planten, ${S.plan.zones.length} vakken. Controleer de vakken en het noorden onder Plan; de controle van aantallen laat zien waar iets niet klopt.`);
+    showTab("plan");
+  }catch(e){
+    const c=e&&e.code; log(c==="cancelled"?"Gestopt.":c==="not_granted"||c==="sampling_disabled"?"Claude heeft geen toestemming gekregen voor deze pagina.":c==="rate_limited"?"Even te veel verzoeken. Probeer het over een paar minuten opnieuw.":c==="image_rejected"?"Een van de foto's werd niet geaccepteerd. Probeer een kleinere JPG of PNG.":c==="invalid_json"?"Claude gaf geen bruikbaar resultaat. Probeer het opnieuw, of met een scherpere foto recht van boven.":"Er ging iets mis bij het inlezen. Probeer het opnieuw.");
+  }finally{ $("runImport").disabled=false; $("stopImport").hidden=true; }
+});
+(async()=>{ try{ sampleFn=window.claude?await window.claude.use("sample"):null; }catch(e){ sampleFn=null; } if(!AI.available()) $("impUnavail").hidden=false; })();
+
+/* ============ Start ============ */
+resize(); setMonth(7); rebuild(); renderCheck(); updateDims(); loop();
+if(document.fonts&&document.fonts.ready) document.fonts.load("700 40px Kalam").then(()=>{ for(const k in labelTex){ labelTex[k].dispose(); delete labelTex[k]; } buildLabels(); }).catch(()=>{});
+</script>

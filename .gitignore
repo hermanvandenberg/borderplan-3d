@@ -1,0 +1,5 @@
+node_modules/
+www/
+dist/
+server/node_modules/
+.env

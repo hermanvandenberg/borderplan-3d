@@ -1,0 +1,22 @@
+{
+  "name": "borderplan-3d",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Borderplan 3D: maak van een getekend beplantingsplan en plantenlijst een 3D-border die je door het jaar heen kunt bekijken.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "serve": "npm run build && npx --yes http-server@14.1.1 www -p 5173 -c-1",
+    "android": "npm run build && npx cap sync android && npx cap open android",
+    "ios": "npm run build && npx cap sync ios && npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/ios": "8.6.0",
+    "three": "0.147.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.0"
+  }
+}
